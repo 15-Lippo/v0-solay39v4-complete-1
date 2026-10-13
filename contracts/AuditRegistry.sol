@@ -62,6 +62,9 @@ contract AuditRegistry {
     
     /// @notice Total number of audits registered
     uint256 public totalAudits;
+
+    /// @notice Nonce used for automatically generated audit IDs
+    uint256 public auditNonce;
     
     /// @notice Verified auditors whitelist
     mapping(address => bool) public verifiedAuditors;
@@ -188,6 +191,58 @@ contract AuditRegistry {
         );
     }
     
+    /**
+     * @notice Register an audit with an automatically generated unique ID.
+     */
+    function registerAuditAuto(
+        bytes32 reportHash,
+        bytes32 codeHash,
+        address auditedContract,
+        uint8 score,
+        string calldata ipfsCid
+    ) external onlyVerifiedAuditor {
+        require(reportHash != bytes32(0), "Empty report hash");
+        require(score <= 100, "Score > 100");
+        require(hashToAuditId[reportHash].length == 0, "Report hash exists");
+
+        bytes32 raw = keccak256(abi.encodePacked(
+            msg.sender, reportHash, codeHash, block.number, block.timestamp, auditNonce
+        ));
+        auditNonce++;
+        string memory auditId = _toHexString(raw);
+
+        audits[auditId] = AuditRecord({
+            reportHash: reportHash,
+            codeHash: codeHash,
+            auditedContract: auditedContract,
+            auditor: msg.sender,
+            timestamp: block.timestamp,
+            score: score,
+            ipfsCid: ipfsCid,
+            auditId: auditId,
+            isValid: true
+        });
+
+        hashToAuditId[reportHash] = auditId;
+        if (auditedContract != address(0)) contractAudits[auditedContract].push(auditId);
+        auditorAudits[msg.sender].push(auditId);
+        auditors[msg.sender].totalAudits++;
+        totalAudits++;
+
+        emit AuditRegistered(auditId, reportHash, auditedContract, msg.sender, score, ipfsCid, block.timestamp);
+    }
+
+    function _toHexString(bytes32 data) internal pure returns (string memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory result = new bytes(64);
+        for (uint256 i = 0; i < 32; i++) {
+            uint8 value = uint8(data[i]);
+            result[i * 2] = alphabet[value >> 4];
+            result[i * 2 + 1] = alphabet[value & 0x0f];
+        }
+        return string(result);
+    }
+
     /**
      * @notice Invalidate an audit (only by original auditor)
      * @param auditId Audit ID to invalidate

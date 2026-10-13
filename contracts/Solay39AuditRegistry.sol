@@ -42,6 +42,7 @@ contract Solay39AuditRegistry {
 
     address public immutable owner;
     uint256 public totalAudits;
+    uint256 public auditNonce;
 
     mapping(bytes32 => AuditRecord) private _audits;
     mapping(string => bytes32) private _hashToId;
@@ -112,8 +113,9 @@ contract Solay39AuditRegistry {
         if (_hashToId[reportHash] != bytes32(0)) revert HashAlreadyRegistered();
 
         auditId = keccak256(abi.encodePacked(
-            projectName, reportHash, block.timestamp, msg.sender
+            projectName, reportHash, block.timestamp, msg.sender, block.number, auditNonce
         ));
+        auditNonce++;
 
         if (_audits[auditId].timestamp != 0) revert AuditAlreadyExists();
 

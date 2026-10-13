@@ -24,6 +24,7 @@ contract Solay39EnterpriseRegistry {
 
     mapping(bytes32 => Audit) public audits;
     bytes32[] private _auditIds;
+    uint256 public auditNonce;
 
     // --- EVENTS ---
 
@@ -48,8 +49,10 @@ contract Solay39EnterpriseRegistry {
         address[] memory auditors
     ) public returns (bytes32 id) {
         id = keccak256(
-            abi.encodePacked(project, reportHash, block.timestamp)
+            abi.encodePacked(project, reportHash, commitHash, msg.sender, block.number, block.timestamp, auditNonce)
         );
+        auditNonce++;
+        require(audits[id].timestamp == 0, "Audit ID exists");
 
         audits[id] = Audit(
             project,
