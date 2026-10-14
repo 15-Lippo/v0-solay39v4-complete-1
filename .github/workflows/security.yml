@@ -27,8 +27,18 @@ jobs:
         run: slither . --config-file slither.config.json --json slither-report.json || true
       - name: Run Forge tests
         run: forge test -vvvv
+      - name: Run Echidna invariants
+        run: |
+          if command -v echidna-test >/dev/null 2>&1 && [ -f echidna/echidna.yaml ]; then
+            echidna-test echidna --config echidna/echidna.yaml
+          else
+            echo "Echidna is not installed; run it in the dedicated security environment."
+          fi
+
       - name: Run Mythril analysis
-        run: myth analyze contracts/Solay39EnterpriseRegistry.sol -o json --execution-timeout 120 > mythril-report.json || true
+        run: |
+          myth analyze contracts/Solay39EnterpriseRegistry.sol -o json --execution-timeout 120 > mythril-report.json || true
+
       - name: Upload reports
         uses: actions/upload-artifact@v4
         with:

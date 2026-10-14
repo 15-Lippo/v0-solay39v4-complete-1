@@ -1,0 +1,3 @@
+testMode: assertion
+sequenceLength: 50
+maxTests: 20000
