@@ -63,13 +63,39 @@ export async function POST(request: NextRequest) {
       (finding: { location?: string; proofOfConcept?: string; impact?: string; recommendation?: string }) =>
         !finding.location || !finding.impact || !finding.recommendation || !finding.proofOfConcept,
     ).length
+    const address = typeof audit.contractAddress === "string" ? audit.contractAddress.trim() : ""
+    const validAddress = /^0x[a-fA-F0-9]{40}$/.test(address)
+    const commit = typeof audit.commit === "string" ? audit.commit.trim() : ""
+    const validGitCommit = /^[a-fA-F0-9]{7,64}$/.test(commit)
+    const sourceVerification = audit.sourceVerification && typeof audit.sourceVerification === "object"
+      ? audit.sourceVerification
+      : { status: "UNVERIFIED", evidence: "No independently verifiable source metadata was supplied." }
+    const normalizedFindings = findings.map((finding: Record<string, unknown>) => ({
+      ...finding,
+      cvss: finding.cvss || undefined,
+      evidenceStatus: finding.proofOfConcept || finding.foundryPoC ? "SUPPLIED" : "MISSING",
+    }))
     const normalizedAudit = {
       ...audit,
+      contractAddress: validAddress ? address : undefined,
+      commit: validGitCommit ? commit : undefined,
+      findings: normalizedFindings,
+      sourceVerification: {
+        ...sourceVerification,
+        status: sourceVerification.status === "VERIFIED" && validAddress ? "VERIFIED" : "UNVERIFIED",
+      },
+      repository: {
+        ...(audit.repository || {}),
+        commit: validGitCommit ? commit : undefined,
+        commitType: validGitCommit ? "git" : "unknown",
+      },
       criticals: counts.CRITICAL ?? audit.criticals ?? 0,
       highs: counts.HIGH ?? audit.highs ?? 0,
       mediums: counts.MEDIUM ?? audit.mediums ?? 0,
       lows: counts.LOW ?? audit.lows ?? 0,
       infos: counts.INFO ?? audit.infos ?? 0,
+      score: openHighOrCritical && Number(audit.score) >= 90 ? Math.min(Number(audit.score) || 0, 69) : audit.score,
+      rating: openHighOrCritical ? "REVIEW REQUIRED" : audit.rating,
       publication: {
         ...(audit.publication || {}),
         publishedAt: new Date().toISOString(),
@@ -80,6 +106,9 @@ export async function POST(request: NextRequest) {
           openHighOrCritical,
           incompleteFindings,
           scoreWarning: openHighOrCritical && Number(audit.score) >= 90,
+          engagementStatus: audit.engagement?.securityEngineersInvolved || audit.engagement?.numberOfAuditors
+            ? "DECLARED_NOT_INDEPENDENTLY_VERIFIED"
+            : "NOT_SUPPLIED",
         },
       },
     }

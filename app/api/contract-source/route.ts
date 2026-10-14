@@ -6,6 +6,7 @@
 interface ExplorerConfig {
   chainId: number
   type: "etherscan" | "solana" | "unsupported"
+  apiUrl?: string
 }
 
 // Etherscan V2 API - unified endpoint with chainid
@@ -375,7 +376,7 @@ This is a Solana SPL Token using the standard Token Program.
 - Upgradeable: No (SPL Token program is immutable)
 */
 
-// ── METADATA ───────────────────────────────────────────────────────────
+// ── METADATA ──────────────────────���────────────────────────────────────
 const TOKEN_METADATA = ${JSON.stringify(metadata, null, 2)};
 
 // ── AUDIT CHECKLIST FOR MANUAL REVIEW ──────────────────────────────────
@@ -495,12 +496,12 @@ export async function POST(req: Request) {
         }, { status: 404 })
       }
       const linesOfCode = result.source.split("\n").length
-      const explorerName = config.apiUrl.includes("etherscan") ? "Etherscan" :
-        config.apiUrl.includes("bscscan") ? "BscScan" :
-        config.apiUrl.includes("arbiscan") ? "Arbiscan" :
-        config.apiUrl.includes("polygonscan") ? "PolygonScan" :
-        config.apiUrl.includes("basescan") ? "BaseScan" :
-        config.apiUrl.includes("snowscan") ? "Snowscan" :
+      const explorerName = (config.apiUrl || "").includes("etherscan") ? "Etherscan" :
+        (config.apiUrl || "").includes("bscscan") ? "BscScan" :
+        (config.apiUrl || "").includes("arbiscan") ? "Arbiscan" :
+        (config.apiUrl || "").includes("polygonscan") ? "PolygonScan" :
+        (config.apiUrl || "").includes("basescan") ? "BaseScan" :
+        (config.apiUrl || "").includes("snowscan") ? "Snowscan" :
         net + " Explorer"
       return Response.json({
         source: result.source,

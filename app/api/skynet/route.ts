@@ -125,9 +125,17 @@ interface Finding {
   description: string
   impact: string
   recommendation: string
+  likelihood?: string
+  proofOfConcept?: string
+  cvss?: unknown
 }
 
 interface ContractMeta {
+  contractName?: string
+  hasReflection?: boolean
+  hasTaxMechanism?: boolean
+  hasDelegateCall?: boolean
+  hasGovernance?: boolean
   contractType: "erc20" | "erc721" | "defi-protocol" | "proxy" | "generic" | "spl-token" | "solana-program" | "move-module" | "cosmwasm" | "non-evm"
   isERC20: boolean
   hasProxy: boolean
@@ -1723,7 +1731,7 @@ ${truncatedCode}`
         
         // Run all analysis tools in parallel for speed
         const [staticRes, fuzzRes, formalRes, crossRes] = await Promise.allSettled([
-          runStaticAnalysis(code, contractName || "Contract"),
+          runStaticAnalysis(code, meta.contractName || "Contract"),
           // Foundry Fuzzing (if backend configured)
           (async () => {
             if (!process.env.STATIC_ANALYSIS_API_URL) return null
@@ -1731,7 +1739,7 @@ ${truncatedCode}`
               const res = await fetch(`${baseUrl}/api/fuzz`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code, contractName: contractName || "Contract", runs: 10000 }),
+                body: JSON.stringify({ code, contractName: meta.contractName || "Contract", runs: 10000 }),
               })
               return res.ok ? await res.json() : null
             } catch { return null }
@@ -1743,22 +1751,22 @@ ${truncatedCode}`
               const res = await fetch(`${baseUrl}/api/formal-verify`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code, contractName: contractName || "Contract" }),
+                body: JSON.stringify({ code, contractName: meta.contractName || "Contract" }),
               })
               return res.ok ? await res.json() : null
             } catch { return null }
           })(),
           // Cross-contract Analysis
           (async () => {
-            if (!contractAddress) return null
+            if (!contractAddr) return null
             try {
               const res = await fetch(`${baseUrl}/api/cross-contract`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                   code,
-                  contractName: contractName || "Contract",
-                  contractAddress, 
+                  contractName: meta.contractName || "Contract",
+                  contractAddress: contractAddr,
                   network: network || "ethereum",
                   fetchDependencies: true // REAL ON-CHAIN: Fetch dependency contracts from Etherscan
                 }),

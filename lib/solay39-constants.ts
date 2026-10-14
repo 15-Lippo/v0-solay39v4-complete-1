@@ -285,6 +285,25 @@ export interface PortfolioProject {
   contractAddress?: string
   scope?: string
   pdfUrl?: string
+  sourceVerification?: {
+    status: "VERIFIED" | "UNVERIFIED" | "NOT_APPLICABLE"
+    explorerUrl?: string
+    compilerVersion?: string
+    optimizerRuns?: number
+    verifiedAt?: string
+    evidence?: string
+  }
+  repository?: {
+    url?: string
+    commit?: string
+    commitType?: "git" | "onchain" | "unknown"
+  }
+  qualityGate?: {
+    status: "REVIEW_REQUIRED" | "READY_FOR_EXTERNAL_REVIEW"
+    openHighOrCritical: boolean
+    incompleteFindings: number
+    scoreWarning: boolean
+  }
   findings?: {
     title: string
     severity: SeverityLevel
@@ -293,7 +312,8 @@ export interface PortfolioProject {
     description: string
     impact: string
     recommendation: string
-    likelihood?: "High" | "Medium" | "Low"
+  likelihood?: "High" | "Medium" | "Low" | string
+
     proofOfConcept?: string
     clientResponse?: string
     fixVerification?: string
@@ -356,7 +376,7 @@ export interface PortfolioProject {
   trustModel?: TrustModelEntry[]
   finalAssessment?: FinalAssessment
   methodologySteps?: string[]       // 6-phase methodology steps
-  // ── Enterprise Standards ──
+  // ���─ Enterprise Standards ──
   reportIntegrity?: {
     reportId: string
     sha256: string
