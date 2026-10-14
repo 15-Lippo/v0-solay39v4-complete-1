@@ -10,8 +10,8 @@ contract Solay39EnterpriseRegistry {
     event AuditPublished(bytes32 indexed id, string project);
 
     function publishAudit(string memory project, string memory reportHash, string memory commitHash, address[] memory auditors) public returns (bytes32 id) {
-        id = keccak256(abi.encodePacked(project, reportHash, commitHash, msg.sender, block.number, block.timestamp, auditNonce));
         auditNonce++;
+        id = keccak256(abi.encode(auditNonce, msg.sender, project, reportHash, commitHash));
         audits[id] = Audit(project, reportHash, commitHash, auditors, block.timestamp);
         _auditIds.push(id);
         emit AuditPublished(id, project);
