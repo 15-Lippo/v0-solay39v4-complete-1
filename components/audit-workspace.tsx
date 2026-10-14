@@ -547,7 +547,7 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
       if (contractMeta?.hasMint && !contractMeta?.mintGuarded) parts.push("Unrestricted mint function present — supply manipulation risk.")
       else if (contractMeta?.hasMint && contractMeta?.mintGuarded) parts.push("Mint function with role-based access control present.")
       else parts.push("No mint function present — fixed supply model.")
-      if (contractMeta?.hasPausable) parts.push("Pausable contract ��� centralization risk.")
+      if (contractMeta?.hasPausable) parts.push("Pausable contract ����� centralization risk.")
       if (contractMeta?.hasProxy) parts.push("Upgradeable proxy pattern detected.")
       if (contractMeta?.hasSelfDestruct) parts.push("Self-destruct capability detected.")
       return parts.join(" ")
@@ -1300,17 +1300,19 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
         }),
         signal: AbortSignal.timeout(45000),
       })
-      const data = await res.json()
-      setPublishResult({
-        success: true,
-        githubUrl: data.githubUrl || undefined,
-        githubError: data.githubError || undefined,
-      })
+  const data = await res.json()
+  if (!res.ok || data.success !== true || data.githubError) {
+  throw new Error(data.githubError || data.error || `Pubblicazione fallita (${res.status})`)
+  }
+  setPublishResult({
+  success: true,
+  githubUrl: data.githubUrl || undefined,
+  })
     } catch (err) {
-    setPublishResult({
-      success: true,
-      githubError: `GitHub upload failed: ${err instanceof Error ? err.message : String(err)}`,
-    })
+  setPublishResult({
+  success: false,
+  error: `GitHub upload failed: ${err instanceof Error ? err.message : String(err)}`,
+  })
   }
   } catch (err) {
     setPublishResult({

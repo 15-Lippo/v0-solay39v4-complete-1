@@ -13,30 +13,30 @@ export async function POST(req: Request) {
       return Response.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    let githubUrl = ""
-    let githubError = ""
-
-    // Try to upload to GitHub if token is available
     const token = process.env.GITHUB_TOKEN
-    if (token) {
-      try {
-        const path = `audits/${fileName}`
+    if (!token) {
+      return Response.json(
+        { success: false, error: "GITHUB_TOKEN not configured. PDF was not uploaded to GitHub." },
+        { status: 503 },
+      )
+    }
 
-        // Check if file already exists (to get sha for update)
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "-")
+    const path = `audits/${safeFileName}`
+    let lastError = "Unknown GitHub upload error"
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
         let sha: string | undefined
-        try {
-          const checkRes = await fetch(`${GITHUB_API}/repos/${GITHUB_REPO}/contents/${path}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-          })
-          if (checkRes.ok) {
-            const existing = await checkRes.json()
-            sha = existing.sha
-          }
-        } catch {
-          // File doesn't exist, that's fine
+        const checkRes = await fetch(`${GITHUB_API}/repos/${GITHUB_REPO}/contents/${path}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" },
+        })
+        if (checkRes.ok) {
+          const existing = (await checkRes.json()) as { sha?: string }
+          sha = existing.sha
+        } else if (checkRes.status !== 404) {
+          const errorData = (await checkRes.json().catch(() => null)) as { message?: string } | null
+          throw new Error(`GitHub lookup failed (${checkRes.status}): ${errorData?.message || "Unknown error"}`)
         }
 
         const body: Record<string, string> = {
@@ -55,29 +55,29 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify(body),
         })
-
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json()
-          githubUrl = uploadData.content?.html_url || `https://github.com/${GITHUB_REPO}/blob/main/${path}`
-        } else {
-          const errData = await uploadRes.json().catch(() => null)
-          githubError = `GitHub upload failed (${uploadRes.status}): ${errData?.message || "Unknown error"}`
-          console.error("[v0] GitHub upload error:", githubError)
+        if (!uploadRes.ok) {
+          const errorData = (await uploadRes.json().catch(() => null)) as { message?: string } | null
+          throw new Error(`GitHub upload failed (${uploadRes.status}): ${errorData?.message || "Unknown error"}`)
         }
-      } catch (err) {
-        githubError = `GitHub upload error: ${err instanceof Error ? err.message : String(err)}`
-        console.error("[v0]", githubError)
+
+        const uploadData = (await uploadRes.json()) as { content?: { html_url?: string }; commit?: { sha?: string } }
+        return Response.json({
+          success: true,
+          githubUrl: uploadData.content?.html_url || `https://github.com/${GITHUB_REPO}/blob/main/${path}`,
+          commitSha: uploadData.commit?.sha,
+          portfolioData,
+        })
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error)
+        console.error(`[v0] GitHub upload attempt ${attempt + 1}/3 failed:`, lastError)
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** attempt))
       }
-    } else {
-      githubError = "GITHUB_TOKEN not configured. PDF was not uploaded to GitHub."
     }
 
-    return Response.json({
-      success: true,
-      githubUrl,
-      githubError: githubError || undefined,
-      portfolioData,
-    })
+    return Response.json(
+      { success: false, error: lastError, githubError: lastError, portfolioData },
+      { status: 502 },
+    )
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error("[v0] Publish error:", msg)
