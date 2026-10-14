@@ -10,6 +10,12 @@ import {
   type SeverityLevel,
   type FindingStatus,
   type PortfolioProject,
+  type AttackScenario,
+  type EconomicRisk,
+  type IntegrationRisk,
+  type GovernanceSecurity,
+  type UpgradeabilityAnalysis,
+  type TestingMethodology,
   SEV_CONFIG,
   SEV_RAW_COLORS,
 } from "@/lib/solay39-constants"
@@ -310,13 +316,14 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
     hasPause?: boolean; hasSetFee?: boolean; hasSelfDestruct?: boolean
     // Multi-chain fields
     codeLanguage?: string; network?: string; linesOfCode?: number; isNonEVM?: boolean
+    hasGovernance?: boolean; usesSafemath?: boolean
   } | null>(null)
-  const [apiScoreBreakdown, setApiScoreBreakdown] = useState<Record<string, number> | null>(null)
+  const [apiScoreBreakdown, setApiScoreBreakdown] = useState<PortfolioProject["scoreBreakdown"] | null>(null)
   // Tier-1 sections from AI
-  const [privilegedRoles, setPrivilegedRoles] = useState<{ role: string; capabilities: string; riskIfCompromised: string }[]>([])
+  const [privilegedRoles, setPrivilegedRoles] = useState<{ role: string; capabilities: string; riskIfCompromised: string; recommendation?: string }[]>([])
   const [trustAssumptions, setTrustAssumptions] = useState<{ statement: string }[]>([])
   const [architectureOverview, setArchitectureOverview] = useState("")
-  const [attackSurface, setAttackSurface] = useState<{ title: string; type: string; description: string; likelihood: string; mitigated: boolean }[]>([])
+  const [attackSurface, setAttackSurface] = useState<AttackScenario[]>([])
   const [toolingUsed, setToolingUsed] = useState<string[]>([])
   // Tier-1 Analysis Results (Slither, Mythril, Foundry, Halmos, Cross-contract)
   const [tier1Results, setTier1Results] = useState<{
@@ -930,12 +937,12 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
         ...(contractMeta?.hasMint ? [{ label: "Mint Function Access Control", status: contractMeta?.mintGuarded ? "pass" as const : "fail" as const, detail: contractMeta?.mintGuarded ? "Properly restricted" : "Unrestricted mint detected" }] : []),
       ] : undefined,
       // Tier-1 advanced
-      governanceSecurity: governanceSecurity || undefined,
-      upgradeabilityAnalysis: upgradeabilityAnalysis || undefined,
-      economicRisks: economicRisks.length > 0 ? economicRisks : undefined,
-      integrationRisks: integrationRisks.length > 0 ? integrationRisks : undefined,
+      governanceSecurity: governanceSecurity as unknown as GovernanceSecurity | undefined,
+      upgradeabilityAnalysis: upgradeabilityAnalysis as unknown as UpgradeabilityAnalysis | undefined,
+      economicRisks: (economicRisks.length > 0 ? economicRisks : undefined) as unknown as EconomicRisk[] | undefined,
+      integrationRisks: (integrationRisks.length > 0 ? integrationRisks : undefined) as unknown as IntegrationRisk[] | undefined,
       invariantsChecked: invariantsChecked.length > 0 ? invariantsChecked : undefined,
-      testingMethodology: testingMethodology || {
+      testingMethodology: (testingMethodology || {
         manualReviewHours: Math.max(8, Math.round(((aiEngagement?.linesOfCode as number) || contractMeta?.linesOfCode || 200) / 50)),
         reviewPhases: [
           "System comprehension & architecture mapping",
@@ -988,7 +995,7 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
           "Economic simulations are theoretical — real market conditions may differ",
           "Findings reflect the state of the code at the time of review",
         ],
-      },
+      }) as unknown as TestingMethodology,
       // Halborn-style -- network-aware, honest metadata
       engagement: (() => {
         const auditDate = project.date || new Date().toISOString().slice(0, 10)
@@ -1027,7 +1034,7 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
         // Enterprise: pass through auditId + reviewTeam from AI response
         auditId: (aiEngagement?.auditId as string) || undefined,
         reviewTeam: (aiEngagement?.reviewTeam as Record<string, unknown>) || undefined,
-      }})(),
+      }})() as unknown as PortfolioProject["engagement"],
       scopeTable: aiScopeTable ? aiScopeTable.map((s) => ({
         contract: String(s.contract || project.name),
         address: contractAddr || "N/A",
@@ -1542,8 +1549,8 @@ const TABS: [TabId, string][] = [
     toolingUsed: toolingUsed.length > 0 ? toolingUsed : undefined,
     governanceSecurity: governanceSecurity || undefined,
     upgradeabilityAnalysis: upgradeabilityAnalysis || undefined,
-    economicRisks: economicRisks.length > 0 ? economicRisks : undefined,
-    integrationRisks: integrationRisks.length > 0 ? integrationRisks : undefined,
+    economicRisks: (economicRisks.length > 0 ? economicRisks : undefined) as unknown as EconomicRisk[] | undefined,
+    integrationRisks: (integrationRisks.length > 0 ? integrationRisks : undefined) as unknown as IntegrationRisk[] | undefined,
     invariantsChecked: invariantsChecked.length > 0 ? invariantsChecked : undefined,
     testingMethodology: testingMethodology || undefined,
     engagement: aiEngagement ? (() => {
@@ -1871,7 +1878,7 @@ const TABS: [TabId, string][] = [
                         return
                       }
                       setAiLoad(true)
-                      setAiError(null)
+                      setAiError("")
                       try {
                         const res = await fetch("/api/contract-source", {
                           method: "POST",
@@ -2568,13 +2575,13 @@ const TABS: [TabId, string][] = [
         setOnChainAnalysisData(data)
         // Also update project name with token name
         if (data.tokenName) {
-          setProject(p => ({ ...p, name: data.tokenName }))
+          setProject(p => ({ ...p, name: data.tokenName ?? p.name }))
         }
       }}
       onReviewComplete={(session) => {
         // Aggiungi i finding confermati ai findings del workspace
         const confirmedCount = session.aiFindings.filter(f => f.decision === "confirmed" || f.decision === "modified").length
-        const rejectedCount = session.aiFindings.filter(f => f.decision === "rejected").length
+        const rejectedCount = session.aiFindings.length - confirmedCount
         
         session.aiFindings
           .filter(f => f.decision === "confirmed" || f.decision === "modified")
@@ -2606,7 +2613,7 @@ const TABS: [TabId, string][] = [
 
         // Update project name with token name if available from on-chain analysis
         if (session.onChainAnalysis?.tokenName) {
-          setProject(p => ({ ...p, name: session.onChainAnalysis!.tokenName }))
+          setProject(p => ({ ...p, name: session.onChainAnalysis?.tokenName ?? p.name }))
         }
         
         // Salva la sessione di review per includerla nel report

@@ -286,7 +286,14 @@ export interface PortfolioProject {
   date: string
   auditor?: string
   contractAddress?: string
+  address?: string
   scope?: string
+  scoreBreakdownAI?: Record<string, unknown>
+  flashLoanScenarios?: AttackScenario[]
+  mevExposure?: unknown[]
+  architectureRecommendations?: string[]
+  aiEngagement?: Record<string, unknown>
+  aiScopeTable?: unknown
   pdfUrl?: string
   sourceVerification?: {
     status: "VERIFIED" | "UNVERIFIED" | "NOT_APPLICABLE"
@@ -315,9 +322,9 @@ export interface PortfolioProject {
     description: string
     impact: string
     recommendation: string
-  likelihood?: "High" | "Medium" | "Low" | string | null
+  likelihood?: "High" | "Medium" | "Low" | string
 
-    proofOfConcept?: string
+  proofOfConcept?: string
     clientResponse?: string
     fixVerification?: string
     foundryPoC?: string
