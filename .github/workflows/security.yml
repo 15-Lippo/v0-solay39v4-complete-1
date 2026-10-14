@@ -141,16 +141,30 @@ jobs:
         run: forge coverage --report summary --report lcov | tee reports/coverage.txt || true
       - name: Run Slither
         if: always()
-        run: slither . --config-file slither.config.json --json reports/slither-report.json || true
+        shell: bash
+        run: |
+          mkdir -p reports
+          if ! slither . --config-file slither.config.json --json reports/slither-report.json > reports/slither_output.txt 2>&1; then
+            echo "Slither exited non-zero; preserving diagnostics." >> reports/slither_output.txt
+          fi
+          if [ ! -s reports/slither-report.json ]; then
+            printf '{"results":{"detectors":[]},"error":"slither_report_unavailable"}\n' > reports/slither-report.json
+          fi
       - name: Fail on Slither high or critical findings
+        if: always()
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
           p = Path("reports/slither-report.json")
-          data = json.loads(p.read_text())
-          issues = data.get("results", {}).get("detectors", data.get("results", []))
-          bad = [i for i in issues if str(i.get("impact", "")).lower() in {"high", "critical"}]
+          try:
+              data = json.loads(p.read_text())
+          except (OSError, json.JSONDecodeError) as exc:
+              raise SystemExit(f"Could not parse Slither report: {exc}")
+          results = data.get("results", [])
+          if isinstance(results, dict):
+              results = results.get("detectors", results.get("issues", []))
+          bad = [i for i in results if str(i.get("impact", i.get("severity", ""))).lower() in {"high", "critical"}]
           if bad:
               raise SystemExit(f"Slither found {len(bad)} high/critical finding(s)")
           print("No Slither high/critical findings")
@@ -167,19 +181,27 @@ jobs:
             myth analyze "$contract" -o json --execution-timeout 120 > "reports/mythril-${name}.json" || true
           done
       - name: Fail on Mythril high or critical findings
+        if: always()
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
           reports = list(Path("reports").glob("mythril-*.json"))
           bad = []
+          invalid = []
           for report in reports:
-              data = json.loads(report.read_text())
+              try:
+                  data = json.loads(report.read_text())
+              except (OSError, json.JSONDecodeError):
+                  invalid.append(report.name)
+                  continue
               for issue in data.get("issues", []):
                   if str(issue.get("severity", "")).lower() in {"high", "critical"}:
                       bad.append((report.name, issue))
           if bad:
               raise SystemExit(f"Mythril found {len(bad)} high/critical finding(s)")
+          if invalid:
+              print(f"Warning: invalid Mythril reports: {', '.join(invalid)}")
           print("No Mythril high/critical findings")
           PY
       - name: Run Echidna

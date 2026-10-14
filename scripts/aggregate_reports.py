@@ -19,6 +19,8 @@ def slither_summary(path):
     results = data.get("results", [])
     if isinstance(results, dict):
         results = results.get("detectors", results.get("issues", []))
+    if not isinstance(results, list):
+        results = []
     counts = {"high": 0, "medium": 0, "low": 0, "informational": 0}
     findings = []
     for item in results if isinstance(results, list) else []:
