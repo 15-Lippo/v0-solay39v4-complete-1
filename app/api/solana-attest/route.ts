@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log(`[Solana Attest] ✓ Success: ${result.solscanUrl}`)
+    console.log("[Solana Attest] Success")
 
     return NextResponse.json({
       success: true,

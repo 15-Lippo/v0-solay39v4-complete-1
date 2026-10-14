@@ -312,7 +312,8 @@ export interface PortfolioProject {
     description: string
     impact: string
     recommendation: string
-    likelihood?: "High" | "Medium" | "Low"
+  likelihood?: "High" | "Medium" | "Low" | string
+
     proofOfConcept?: string
     clientResponse?: string
     fixVerification?: string
@@ -375,7 +376,7 @@ export interface PortfolioProject {
   trustModel?: TrustModelEntry[]
   finalAssessment?: FinalAssessment
   methodologySteps?: string[]       // 6-phase methodology steps
-  // ── Enterprise Standards ──
+  // ���─ Enterprise Standards ──
   reportIntegrity?: {
     reportId: string
     sha256: string
