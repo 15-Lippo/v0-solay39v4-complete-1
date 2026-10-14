@@ -299,15 +299,7 @@ export default function ManualReviewWorkspace({
   // ── Aggiorna stato di un check ─────────────────────────────────
 
   function updateCheck(id: string, status: CheckStatus, note?: string) {
-  if (status !== "pending") {
-    const current = session.checks.find(check => check.id === id)
-    const response = note ?? current?.note ?? ""
-    if (!response.trim()) {
-      setExpandedCheck(id)
-      return
-    }
-  }
-  setSession(s => ({
+    setSession(s => ({
 
       ...s,
       checks: s.checks.map(c =>
@@ -960,19 +952,17 @@ export default function ManualReviewWorkspace({
                                 </div>
 
                                 <div style={{ marginTop: 9 }}>
-                                  <label style={{ display: "block", fontSize: 9, color: check.note.trim() ? "#00ff88" : "#ffcc00", letterSpacing: "0.08em", marginBottom: 5 }}>
-                                    RISPOSTA AUDITOR *
+                                  <label style={{ display: "block", fontSize: 9, color: "#718089", letterSpacing: "0.08em", marginBottom: 5 }}>
+                                    RISPOSTA AUDITOR
                                   </label>
                                   <textarea
-                                    required
-                                    aria-label={`Risposta obbligatoria per: ${check.question}`}
+                                    aria-label={`Risposta auditor per: ${check.question}`}
                                     value={check.note}
                                     onChange={e => updateCheck(check.id, check.status, e.target.value)}
                                     placeholder="Scrivi cosa hai verificato, quale evidenza hai trovato e il riferimento (link/file/linea)..."
                                     rows={2}
-                                    style={{ width: "100%", background: "#0d0d0d", border: `1px solid ${check.note.trim() ? "#00ff8840" : "#ffcc0040"}`, color: "#aaa", fontSize: 10, padding: "7px 8px", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
+                                    style={{ width: "100%", background: "#0d0d0d", border: "1px solid #222", color: "#aaa", fontSize: 10, padding: "7px 8px", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }}
                                   />
-                                  {!check.note.trim() && <div style={{ marginTop: 4, fontSize: 9, color: "#ffcc00" }}>Compila la risposta prima di considerare questa voce verificata.</div>}
                                 </div>
                                 {expandedCheck === check.id && (
                                   <div style={{ marginTop: 8 }}>
