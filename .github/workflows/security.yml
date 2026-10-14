@@ -62,6 +62,40 @@ jobs:
           echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
           "$HOME/.foundry/bin/foundryup"
           "$HOME/.foundry/bin/forge" --version
+      - name: Ensure Foundry bin on PATH
+        shell: bash
+        run: |
+          set -euxo pipefail
+          candidates=(
+            "$HOME/.foundry/bin"
+            "$HOME/.config/.foundry/bin"
+            "$HOME/.config/foundry/bin"
+          )
+          found=""
+          for dir in "${candidates[@]}"; do
+            if [ -d "$dir" ]; then
+              echo "Found Foundry bin at: $dir"
+              echo "$dir" >> "$GITHUB_PATH"
+              export PATH="$dir:$PATH"
+              found="$dir"
+            fi
+          done
+          if [ -z "$found" ]; then
+            forge_path=$(find "$HOME" -maxdepth 6 -type f -name forge -executable -print -quit 2>/dev/null || true)
+            if [ -n "$forge_path" ]; then
+              found="$(dirname "$forge_path")"
+              echo "Found forge in: $found"
+              echo "$found" >> "$GITHUB_PATH"
+              export PATH="$found:$PATH"
+            fi
+          fi
+          if [ -z "$found" ] || ! command -v forge >/dev/null 2>&1; then
+            echo "Could not locate forge" >&2
+            find "$HOME" -maxdepth 5 -type f -name forge -print 2>/dev/null || true
+            exit 1
+          fi
+          forge --version
+
       - name: Run Forge tests
         run: forge test -vvvv | tee reports/forge_output.txt
       - name: Run Forge coverage
