@@ -1,0 +1,37 @@
+name: CI - Foundry tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  foundry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Foundry (forge & cast)
+        run: |
+          curl -L https://foundry.paradigm.xyz | bash
+          source "$HOME/.bashrc" || true
+          export PATH="$HOME/.foundry/bin:$PATH"
+          foundryup
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          forge --version
+
+      - name: Install Python tools (optional for slither/mythril)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common git curl build-essential
+          python3 -m pip install --upgrade pip
+          pip3 install slither-analyzer mythril || true
+
+      - name: Install project deps (if any)
+        run: |
+          echo "No project-specific install steps defined"
+
+      - name: Run Foundry tests
+        run: forge test -vvvv
