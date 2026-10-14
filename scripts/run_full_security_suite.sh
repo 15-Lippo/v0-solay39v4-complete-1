@@ -4,11 +4,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 mkdir -p reports
-export PATH="$HOME/.foundry/bin:$HOME/.local/bin:$PATH"
+FOUNDRY_BIN="$HOME/.foundry/bin"
+FOUNDRY_VERSION_DIR="$(find "$HOME/.foundry/versions/foundry-rs/foundry" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1)"
+export PATH="$FOUNDRY_BIN${FOUNDRY_VERSION_DIR:+:$FOUNDRY_VERSION_DIR}:$HOME/.local/bin:$PATH"
 
 if ! command -v forge >/dev/null 2>&1; then
-  if [[ -x "$ROOT/scripts/install_foundry.sh" ]]; then "$ROOT/scripts/install_foundry.sh"; else curl -L https://foundry.paradigm.xyz | bash; foundryup; fi
-  export PATH="$HOME/.foundry/bin:$HOME/.local/bin:$PATH"
+  if [[ -x "$ROOT/scripts/install_foundry.sh" ]]; then "$ROOT/scripts/install_foundry.sh"; else curl -fsSL https://foundry.paradigm.xyz | bash; fi
+  FOUNDRY_VERSION_DIR="$(find "$HOME/.foundry/versions/foundry-rs/foundry" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1)"
+  export PATH="$FOUNDRY_BIN${FOUNDRY_VERSION_DIR:+:$FOUNDRY_VERSION_DIR}:$HOME/.local/bin:$PATH"
+fi
+
+if ! command -v forge >/dev/null 2>&1; then
+  echo "forge non trovato nel PATH dopo l'installazione" >&2
+  exit 1
 fi
 
 forge test -vvvv 2>&1 | tee reports/forge_output.txt

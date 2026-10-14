@@ -4,5 +4,5 @@ out = "out"
 libs = ["lib"]
 solc_version = "0.8.20"
 
-[profile.default.rpc_endpoints]
+[rpc_endpoints]
 mainnet = "https://mainnet.infura.io/v3/${INFURA_KEY}"
