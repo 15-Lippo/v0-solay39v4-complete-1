@@ -12,14 +12,17 @@ contract Solay39AuditRegistry {
     bytes32[] private _auditIds;
     event AuditRegistered(bytes32 indexed auditId, string projectName, string reportHash, string ipfsCid, uint8 score, address auditor, uint256 timestamp);
     event AuditInvalidated(bytes32 indexed auditId, string reason);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event AuditorVerificationUpdated(address indexed auditor, bool verified);
+    event AuditorRegistered(address indexed auditor, string name, string firmName);
     constructor() { owner = msg.sender; }
     modifier onlyOwnerMod() { if (msg.sender != owner) revert OnlyOwner(); _; }
     function registerAudit(string calldata projectName, string calldata reportHash, string calldata codeReference, string calldata ipfsCid, uint8 score) external onlyOwnerMod returns (bytes32 auditId) {
         if (bytes(projectName).length == 0 || bytes(reportHash).length == 0) revert EmptyField();
         if (score > 100) revert InvalidScore();
         if (_hashToId[reportHash] != bytes32(0)) revert HashAlreadyRegistered();
-        auditId = keccak256(abi.encodePacked(projectName, reportHash, block.timestamp, msg.sender, block.number, auditNonce));
         auditNonce++;
+        auditId = keccak256(abi.encode(auditNonce, msg.sender, projectName, reportHash));
         if (_audits[auditId].timestamp != 0) revert AuditAlreadyExists();
         _audits[auditId] = AuditRecord(projectName, reportHash, codeReference, ipfsCid, score, msg.sender, block.timestamp, true);
         _hashToId[reportHash] = auditId; _auditIds.push(auditId); totalAudits++;
