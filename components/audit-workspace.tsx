@@ -645,10 +645,12 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
       return
     }
 
-    setPublishing(true)
-    setPublishResult(null)
+  setPublishing(true)
+  setPublishResult(null)
 
+  try {
     const crits = findings.filter((f) => f.severity === "CRITICAL" && f.status === "OPEN").length
+
     const highs = findings.filter((f) => f.severity === "HIGH" && f.status === "OPEN").length
     const meds = findings.filter((f) => f.severity === "MEDIUM" && f.status === "OPEN").length
     const lows = findings.filter((f) => f.severity === "LOW" && f.status === "OPEN").length
@@ -1263,13 +1265,18 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ audit: enrichedEntry }),
+      signal: AbortSignal.timeout(30000),
     })
     const persistenceResult = await persistenceResponse.json().catch(() => null)
     if (!persistenceResponse.ok || !persistenceResult?.success) {
       throw new Error(persistenceResult?.error || "Impossibile pubblicare l'audit nello storage pubblico")
     }
 
-    // ── Step 4: Upload to GitHub ──
+    // The public audit is now durable; GitHub upload is optional evidence and must not block publication.
+    setPublishResult({ success: true })
+    setPublishing(false)
+
+    // ── Step 4: Upload to GitHub (best effort) ──
     try {
       const fileName = `SOLAY39-${project.name.replace(/\s+/g, "-")}-Audit-${project.date || new Date().toISOString().slice(0, 10)}.pdf`
 
@@ -1284,6 +1291,7 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
           fileName,
           portfolioData: portfolioEntry,
         }),
+        signal: AbortSignal.timeout(45000),
       })
       const data = await res.json()
       setPublishResult({
@@ -1292,14 +1300,19 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
         githubError: data.githubError || undefined,
       })
     } catch (err) {
-      setPublishResult({
-        success: true,
-        githubError: `GitHub upload failed: ${err instanceof Error ? err.message : String(err)}`,
-      })
-    }
-
+    setPublishResult({
+      success: true,
+      githubError: `GitHub upload failed: ${err instanceof Error ? err.message : String(err)}`,
+    })
+  }
+  } catch (err) {
+    setPublishResult({
+      error: err instanceof Error ? err.message : "Pubblicazione fallita",
+    })
+  } finally {
     setPublishing(false)
   }
+}
 
   const [aiNote, setAiNote] = useState("")
 
