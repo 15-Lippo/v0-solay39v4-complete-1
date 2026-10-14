@@ -49,3 +49,11 @@ if ! command -v forge >/dev/null 2>&1; then
 fi
 echo "Foundry installato:"
 forge --version
+
+# Export for GitHub Actions and other parent orchestration shells.
+if [ -n "${GITHUB_PATH:-}" ]; then
+  printf '%s\n' "$FOUNDRY_BIN" >> "$GITHUB_PATH"
+  if [ -n "${VERSION_DIR:-}" ]; then
+    printf '%s\n' "$VERSION_DIR" >> "$GITHUB_PATH"
+  fi
+fi
