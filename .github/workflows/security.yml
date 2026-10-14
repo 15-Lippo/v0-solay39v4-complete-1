@@ -208,7 +208,7 @@ jobs:
         if: hashFiles('echidna/echidna.yaml', 'echidna/EchidnaHarness.sol') != ''
         uses: crytic/echidna-action@v2
         with:
-          files: echidna/EchidnaHarness.sol
+          files: echidna
           contract: EchidnaHarness
           config: echidna/echidna.yaml
           format: text
