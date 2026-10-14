@@ -285,6 +285,25 @@ export interface PortfolioProject {
   contractAddress?: string
   scope?: string
   pdfUrl?: string
+  sourceVerification?: {
+    status: "VERIFIED" | "UNVERIFIED" | "NOT_APPLICABLE"
+    explorerUrl?: string
+    compilerVersion?: string
+    optimizerRuns?: number
+    verifiedAt?: string
+    evidence?: string
+  }
+  repository?: {
+    url?: string
+    commit?: string
+    commitType?: "git" | "onchain" | "unknown"
+  }
+  qualityGate?: {
+    status: "REVIEW_REQUIRED" | "READY_FOR_EXTERNAL_REVIEW"
+    openHighOrCritical: boolean
+    incompleteFindings: number
+    scoreWarning: boolean
+  }
   findings?: {
     title: string
     severity: SeverityLevel

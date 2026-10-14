@@ -191,6 +191,16 @@ export function AuditDetailClient({ project, auditId }: { project: PortfolioProj
           </a>
         </div>
       )}
+      {liveProject.qualityGate?.status === "REVIEW_REQUIRED" && (
+        <div className="border-b border-amber-500/30 bg-amber-950/20 px-5 py-3 text-center font-mono text-[10px] tracking-wide text-amber-300">
+          REVIEW REQUIRED: this report contains open high-severity findings or incomplete evidence. It is not an external-audit sign-off.
+        </div>
+      )}
+      {liveProject.sourceVerification?.status !== "VERIFIED" && (
+        <div className="border-b border-s39-red/20 bg-s39-bg1 px-5 py-3 text-center font-mono text-[10px] tracking-wide text-s39-dim">
+          SOURCE VERIFICATION: UNVERIFIED — compiler, repository commit, and on-chain source evidence must be independently confirmed.
+        </div>
+      )}
       <ProjectDetail
         p={liveProject}
         backHref="/"
