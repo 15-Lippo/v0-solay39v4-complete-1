@@ -34,10 +34,14 @@ jobs:
           # the runner Python. Keep it isolated and make its availability explicit
           # so Forge/Slither reports and the always-run artifact upload are retained.
           python -m venv "$RUNNER_TEMP/mythril-tools"
-          if "$RUNNER_TEMP/mythril-tools/bin/python" -m pip install --upgrade pip setuptools wheel mythril; then
+          if "$RUNNER_TEMP/mythril-tools/bin/python" -m pip install --upgrade pip wheel mythril && "$RUNNER_TEMP/mythril-tools/bin/python" -m pip install 'setuptools<81'; then
             export PATH="$RUNNER_TEMP/mythril-tools/bin:$PATH"
             echo "$RUNNER_TEMP/mythril-tools/bin" >> "$GITHUB_PATH"
-            myth version
+            if myth version; then
+              echo "Mythril is available."
+            else
+              echo "Mythril installed but unavailable at runtime; continuing with Mythril skipped." | tee reports/mythril_output.txt
+            fi
           else
             echo "Mythril installation failed; continuing with Mythril skipped." | tee reports/mythril_output.txt
           fi
