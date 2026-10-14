@@ -95,7 +95,7 @@ export interface AuditEngagement {
   engineeringHours: number           // days * engineers * 10 (max 10-12h/day/engineer)
   securityEngineersInvolved: number  // number of engineers (1-3)
   leadAuditor: string                // "Solay39 Founder"
-  compilerVersionUsed: string        // "solc 0.6.12"
+  compilerVersionUsed: string | null        // "solc 0.6.12"
   contractsReviewed: number          // 1
   linesOfCode: number                // 245
   commitHash: string                 // "0xabc123...verified on Etherscan"
@@ -263,6 +263,9 @@ export interface AuditProject {
   commit: string
   scope: string
   date: string
+  contractAddress?: string
+  tags?: string[]
+  address?: string
 }
 
 export interface PortfolioProject {
@@ -312,7 +315,7 @@ export interface PortfolioProject {
     description: string
     impact: string
     recommendation: string
-  likelihood?: "High" | "Medium" | "Low" | string
+  likelihood?: "High" | "Medium" | "Low" | string | null
 
     proofOfConcept?: string
     clientResponse?: string
