@@ -6,8 +6,28 @@ contract Solay39EnterpriseRegistry {
     mapping(bytes32 => Audit) public audits;
     bytes32[] private _auditIds;
     uint256 public auditNonce;
+    address public owner;
+    address public timelock;
     error AuditNotFound();
+    error NotOwner();
+    error ZeroAddress();
     event AuditPublished(bytes32 indexed id, string project);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event TimelockUpdated(address indexed previousTimelock, address indexed newTimelock);
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    modifier onlyOwnerOrTimelock() {
+        if (msg.sender != owner && msg.sender != timelock) revert NotOwner();
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
 
     function publishAudit(string memory project, string memory reportHash, string memory commitHash, address[] memory auditors) public returns (bytes32 id) {
         auditNonce++;
@@ -32,4 +52,17 @@ contract Solay39EnterpriseRegistry {
     }
     function getAuditCount() external view returns (uint256) { return _auditIds.length; }
     function getAllAuditIds() external view returns (bytes32[] memory) { return _auditIds; }
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        address previousOwner = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    function setTimelock(address newTimelock) external onlyOwner {
+        address previousTimelock = timelock;
+        timelock = newTimelock;
+        emit TimelockUpdated(previousTimelock, newTimelock);
+    }
 }
