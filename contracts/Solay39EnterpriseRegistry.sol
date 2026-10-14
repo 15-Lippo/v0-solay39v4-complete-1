@@ -29,7 +29,7 @@ contract Solay39EnterpriseRegistry {
         owner = msg.sender;
     }
 
-    function publishAudit(string memory project, string memory reportHash, string memory commitHash, address[] memory auditors) public returns (bytes32 id) {
+    function publishAudit(string memory project, string memory reportHash, string memory commitHash, address[] memory auditors) public onlyOwner returns (bytes32 id) {
         auditNonce++;
         id = keccak256(abi.encode(auditNonce, msg.sender, project, reportHash, commitHash));
         audits[id] = Audit(project, reportHash, commitHash, auditors, block.timestamp);

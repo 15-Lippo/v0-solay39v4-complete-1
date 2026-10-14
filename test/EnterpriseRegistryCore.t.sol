@@ -9,5 +9,11 @@ contract EnterpriseRegistryTest is Test {
     function testVerifyByReportHash_returnsIdWhenFound() public { address[] memory as_=new address[](1); reg.publishAudit("P2","rh-2","c2",as_); (bool found,bytes32 id)=reg.verifyByReportHash("rh-2"); assertTrue(found); assertTrue(id != bytes32(0)); }
     function testGetAuditCount_and_getAllIds() public { address[] memory as_=new address[](1); reg.publishAudit("P3","rh3","c3",as_); reg.publishAudit("P3b","rh3b","c3b",as_); assertEq(reg.getAuditCount(),2); assertEq(reg.getAllAuditIds().length,2); }
     function testPublishSameInputs_multipleIds() public { address[] memory as_=new address[](1); vm.warp(1700000000); bytes32 a=reg.publishAudit("Same","rep","commit",as_); vm.warp(1700000000); bytes32 b=reg.publishAudit("Same","rep","commit",as_); assertTrue(a != b); }
+    function testPublishAudit_rejectsUnauthorizedCaller() public {
+        address[] memory as_ = new address[](0);
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(Solay39EnterpriseRegistry.NotOwner.selector);
+        reg.publishAudit("P4", "rh4", "c4", as_);
+    }
     function testVerifyAudit_nonexistentReverts() public { vm.expectRevert(); reg.verifyAudit(bytes32(uint256(0xdead))); }
 }
