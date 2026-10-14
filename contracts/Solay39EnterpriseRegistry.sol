@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 contract Solay39EnterpriseRegistry {
     struct Audit { string project; string reportHash; string commitHash; address[] auditors; uint256 timestamp; }
     mapping(bytes32 => Audit) public audits;
+    mapping(bytes32 => bytes32[]) private _auditIdsByReportHash;
     bytes32[] private _auditIds;
     uint256 public auditNonce;
     address public owner;
@@ -33,6 +34,8 @@ contract Solay39EnterpriseRegistry {
         auditNonce++;
         id = keccak256(abi.encode(auditNonce, msg.sender, project, reportHash, commitHash));
         audits[id] = Audit(project, reportHash, commitHash, auditors, block.timestamp);
+        bytes32 reportKey = keccak256(bytes(reportHash));
+        _auditIdsByReportHash[reportKey].push(id);
         _auditIds.push(id);
         emit AuditPublished(id, project);
     }
@@ -43,11 +46,8 @@ contract Solay39EnterpriseRegistry {
         return (a.project, a.reportHash, a.commitHash, a.auditors, a.timestamp);
     }
     function verifyByReportHash(string calldata reportHash) external view returns (bool found, bytes32 id) {
-        bytes32 needle = keccak256(bytes(reportHash));
-        for (uint256 i; i < _auditIds.length; i++) {
-            bytes32 candidate = _auditIds[i];
-            if (keccak256(bytes(audits[candidate].reportHash)) == needle) return (true, candidate);
-        }
+        bytes32[] storage matchingIds = _auditIdsByReportHash[keccak256(bytes(reportHash))];
+        if (matchingIds.length != 0) return (true, matchingIds[0]);
         return (false, bytes32(0));
     }
     function getAuditCount() external view returns (uint256) { return _auditIds.length; }
