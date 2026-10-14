@@ -183,11 +183,11 @@ export interface AttackScenario {
 // ── Tier-1 Governance ─────────────────────────────────────────
 export interface GovernanceSecurity {
   hasGovernance: boolean
-  proposalLifecycle?: string        // "creation -> voting -> queue -> execution"
-  timelockDelay?: string            // "48h" or "none"
-  timelockBypassRisk?: string       // explanation
-  votingMechanism?: string          // "token-weighted on-chain" / "snapshot off-chain"
-  quorumThreshold?: string          // "4% of total supply"
+  proposalLifecycle?: string | null        // "creation -> voting -> queue -> execution"
+  timelockDelay?: string | null            // "48h" or "none"
+  timelockBypassRisk?: string | null       // explanation
+  votingMechanism?: string | null          // "token-weighted on-chain" / "snapshot off-chain"
+  quorumThreshold?: string | null          // "4% of total supply"
   votingRisks?: string[]            // ["flash-loan voting", "whale takeover", "low quorum"]
 }
 
@@ -198,7 +198,7 @@ export interface UpgradeabilityAnalysis {
   adminAddress?: string
   storageCollisionRisk?: "None" | "Low" | "Medium" | "High"
   initializerProtection?: boolean
-  upgradeControl?: string           // "multisig" / "single owner" / "timelock"
+  upgradeControl?: string | null           // "multisig" / "single owner" / "timelock"
 }
 
 // ── Tier-1 Economic Risks ─────────────────────────────────────

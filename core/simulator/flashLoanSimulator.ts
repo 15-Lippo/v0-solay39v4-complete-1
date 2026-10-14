@@ -122,14 +122,14 @@ export async function simulateSandwichAttack(
     const router = new ethers.Contract(dexRouter, routerIface, provider)
 
     // Get price before
-    const [, amountOutBefore] = await router.getAmountsOut(victimAmount, [tokenIn, tokenOut])
+    const [, amountOutBefore] = (await router.getAmountsOut(victimAmount, [tokenIn, tokenOut])) as [bigint, bigint]
 
     // Simulate frontrun with 10x victim amount
     const frontrunAmount = victimAmount * 10n
-    const [, amountOutAfterFrontrun] = await router.getAmountsOut(
-      victimAmount,
+    const [, amountOutAfterFrontrun] = (await router.getAmountsOut(
+      frontrunAmount,
       [tokenIn, tokenOut]
-    )
+    )) as [bigint, bigint]
 
     // Calculate slippage
     const slippage =

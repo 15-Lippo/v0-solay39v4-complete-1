@@ -21,6 +21,20 @@ interface Tier1Data {
   riskModel?: RiskModelConfig | Record<string, unknown>
   auditorProfile?: AuditorProfile | Record<string, unknown>
   limitations?: AuditLimitations | Record<string, unknown>
+  economicAttackVectors?: { type: string; title: string; applicable: boolean; severity: string; description: string; exploitCondition: string; estimatedLoss: string; mitigation: string; pocSketch: string }[]
+  reviewRecord?: Record<string, unknown>
+  attackerProfiles?: unknown[]
+  assetsAtRisk?: unknown[]
+  enterpriseTrustAssumptions?: unknown[]
+  formalVerification?: unknown
+  residualRisk?: unknown
+  exploitSimulation?: unknown
+  codeReference?: unknown
+  auditorSignatures?: Record<string, unknown>
+  signedReport?: Record<string, unknown>
+  onChainRecord?: Record<string, unknown>
+  testCoverage?: Record<string, unknown>
+  solanaAttestation?: Record<string, unknown>
   // Manual Review Session
   manualReview?: {
     completedAt?: string

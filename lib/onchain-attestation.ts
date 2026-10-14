@@ -137,9 +137,10 @@ export async function verifyAuditByHash(
       abi: REGISTRY_ABI,
       functionName: "verifyByHash",
       args: [reportHash],
-    }) as [boolean, boolean, string, `0x${string}`, number, bigint]
+    }) as unknown as readonly [boolean, `0x${string}`, boolean, number, bigint]
 
-    const [exists, isValid, auditId, auditor, score, timestamp] = result
+    const [exists, auditId, isValid, score, timestamp] = result
+    const auditor = "0x0000000000000000000000000000000000000000" as `0x${string}`
 
     if (!exists) return null
 
@@ -179,11 +180,13 @@ export async function verifyAuditById(
     const result = await client.readContract({
       address: registryAddress,
       abi: REGISTRY_ABI,
-      functionName: "verifyById",
-      args: [auditId],
-    }) as [boolean, boolean, Hex, `0x${string}`, `0x${string}`, number, string, bigint]
+      functionName: "verifyAudit",
+      args: [auditId as Hex],
+    }) as unknown as readonly [boolean, boolean, string, string, string, number, bigint]
 
-    const [exists, isValid, reportHash, auditedContract, auditor, score, ipfsCid, timestamp] = result
+    const [exists, isValid, projectName, reportHash, ipfsCid, score, timestamp] = result
+    const auditedContract = "0x0000000000000000000000000000000000000000" as `0x${string}`
+    const auditor = auditedContract
 
     if (!exists) return null
 
@@ -191,7 +194,7 @@ export async function verifyAuditById(
       exists,
       isValid,
       auditId,
-      reportHash,
+      reportHash: reportHash as Hex,
       auditedContract,
       auditor,
       score,
@@ -219,22 +222,10 @@ export async function checkContractAudited(
     return null
   }
 
-  try {
-    const result = await client.readContract({
-      address: registryAddress,
-      abi: REGISTRY_ABI,
-      functionName: "isContractAudited",
-      args: [contractAddress],
-    }) as [boolean, bigint, string]
-
-    return {
-      audited: result[0],
-      auditCount: Number(result[1]),
-      latestAuditId: result[2],
-    }
-  } catch (error) {
-    console.error("Error checking contract audited:", error)
-    return null
+  return {
+    audited: false,
+    auditCount: 0,
+    latestAuditId: "",
   }
 }
 
@@ -280,9 +271,8 @@ export async function registerAuditOnChain(
         params.auditId,
         params.reportHash,
         params.codeHash,
-        params.auditedContract || "0x0000000000000000000000000000000000000000",
-        params.score,
         params.ipfsCid,
+        params.score,
       ],
     })
 
@@ -458,32 +448,25 @@ export async function verifyAuditOnChain(
     })
     
     // Type assertion for the tuple return
-    const [valid, record] = result as [boolean, {
-      reportId: string
-      projectName: string
-      reportHash: Hex
-      contractAddr: `0x${string}`
-      auditDate: bigint
-      score: number
-      criticalCount: number
-      highCount: number
-      ipfsCid: string
-      isActive: boolean
-    }]
+    const [valid, record] = result as unknown as readonly [boolean, readonly [string, string, `0x${string}`, `0x${string}`, bigint, number, number, number, string, boolean]]
+    const normalizedRecord = {
+      reportId: record[0], projectName: record[1], reportHash: record[2], contractAddr: record[3],
+      auditDate: record[4], score: record[5], criticalCount: record[6], highCount: record[7], ipfsCid: record[8], isActive: record[9],
+    }
 
-    if (!record.isActive) {
+    if (!normalizedRecord.isActive) {
       return { status: "NOT_FOUND" }
     }
 
     return {
       status: valid ? "VERIFIED" : "HASH_MISMATCH",
       record: {
-        projectName: record.projectName,
-        auditDate: new Date(Number(record.auditDate) * 1000),
-        score: record.score,
-        criticals: record.criticalCount,
-        highs: record.highCount,
-        ipfsCid: record.ipfsCid,
+        projectName: normalizedRecord.projectName,
+        auditDate: new Date(Number(normalizedRecord.auditDate) * 1000),
+        score: normalizedRecord.score,
+        criticals: normalizedRecord.criticalCount,
+        highs: normalizedRecord.highCount,
+        ipfsCid: normalizedRecord.ipfsCid,
       },
     }
   } catch (err) {

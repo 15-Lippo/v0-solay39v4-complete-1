@@ -4274,7 +4274,7 @@ console.log("Signer:", recovered);
             )}
 
             {/* ── SECTION 17B: ECONOMIC ATTACK SURFACE ── */}
-            {p.economicAttackVectors?.some((v: { applicable: boolean }) => v.applicable) && (
+            {(p.economicAttackVectors as Array<{ applicable: boolean; type: string; title: string; severity: string; description: string; exploitCondition: string; estimatedLoss: string; mitigation: string; pocSketch: string }>)?.some((v) => (v as { applicable?: boolean }).applicable === true) && (
               <section className="border border-s39-border rounded-xl p-6 bg-s39-bg1 mt-6">
                 <div className="text-[9px] font-mono tracking-widest text-s39-dim uppercase mb-4 flex items-center gap-2">
                   <span className="w-4 h-px bg-s39-border" />
@@ -4282,13 +4282,9 @@ console.log("Signer:", recovered);
                   <span className="flex-1 h-px bg-s39-border" />
                 </div>
                 <div className="space-y-3">
-                  {p.economicAttackVectors
-                    .filter((v: { applicable: boolean }) => v.applicable)
-                    .map((v: {
-                      type: string; title: string; severity: string
-                      description: string; exploitCondition: string
-                      estimatedLoss: string; mitigation: string; pocSketch: string
-                    }) => (
+                  {(p.economicAttackVectors as Array<{ applicable: boolean; type: string; title: string; severity: string; description: string; exploitCondition: string; estimatedLoss: string; mitigation: string; pocSketch: string }>)
+                    .filter((v) => (v as { applicable?: boolean }).applicable === true)
+                    .map((v: { type: string; title: string; severity: string; description: string; exploitCondition: string; estimatedLoss: string; mitigation: string; pocSketch: string }) => (
                     <div key={v.type} className="p-4 rounded-lg bg-s39-bg0 border border-s39-border">
                       <div className="flex items-center gap-2 mb-2">
                         <span className={`text-[9px] font-black font-mono px-2 py-0.5 rounded ${
