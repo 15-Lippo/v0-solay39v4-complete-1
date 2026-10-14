@@ -5,6 +5,7 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -46,9 +47,13 @@ jobs:
             echo "Mythril installation failed; continuing with Mythril skipped." | tee reports/mythril_output.txt
           fi
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
+        shell: bash
+        run: |
+          set -euxo pipefail
+          curl -L https://foundry.paradigm.xyz | bash
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          "$HOME/.foundry/bin/foundryup"
+          "$HOME/.foundry/bin/forge" --version
       - name: Run Forge tests
         run: forge test -vvvv | tee reports/forge_output.txt
       - name: Run Forge coverage
