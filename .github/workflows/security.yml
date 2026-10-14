@@ -1,49 +1,76 @@
-name: Security checks (Slither + Foundry + Mythril + Echidna)
+name: Security checks
+
 on:
   push:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+
+permissions:
+  contents: read
+
 jobs:
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          pip3 install slither-analyzer mythril
+          python-version: "3.11"
+      - name: Install analysis tools
+        run: python -m pip install --upgrade pip slither-analyzer mythril
       - name: Install Foundry
-        run: |
-          curl -L https://foundry.paradigm.xyz | bash
-          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
-          foundryup
-          forge --version
-      - name: Run Slither
-        run: slither . --config-file slither.config.json --json slither-report.json || true
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - name: Run Forge tests
         run: forge test -vvvv
-      - name: Run Echidna invariants
+      - name: Run Slither
+        run: slither . --config-file slither.config.json --json slither-report.json
+      - name: Fail on Slither high or critical findings
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("slither-report.json")
+          data = json.loads(p.read_text())
+          issues = data.get("results", {}).get("detectors", data.get("results", []))
+          bad = [i for i in issues if str(i.get("impact", "")).lower() in {"high", "critical"}]
+          if bad:
+              raise SystemExit(f"Slither found {len(bad)} high/critical finding(s)")
+          print("No Slither high/critical findings")
+          PY
+      - name: Run Mythril
+        run: myth analyze contracts/Solay39EnterpriseRegistry.sol -o json --execution-timeout 120 > mythril-report.json
+      - name: Fail on Mythril high or critical findings
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("mythril-report.json").read_text())
+          issues = data.get("issues", [])
+          bad = [i for i in issues if str(i.get("severity", "")).lower() in {"high", "critical"}]
+          if bad:
+              raise SystemExit(f"Mythril found {len(bad)} high/critical finding(s)")
+          print("No Mythril high/critical findings")
+          PY
+      - name: Run Echidna when installed
         run: |
           if command -v echidna-test >/dev/null 2>&1 && [ -f echidna/echidna.yaml ]; then
             echidna-test echidna --config echidna/echidna.yaml
           else
-            echo "Echidna is not installed; run it in the dedicated security environment."
+            echo "Echidna unavailable; run it in the security Docker image."
           fi
-
-      - name: Run Mythril analysis
-        run: |
-          myth analyze contracts/Solay39EnterpriseRegistry.sol -o json --execution-timeout 120 > mythril-report.json || true
-
       - name: Upload reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: |
             slither-report.json
             mythril-report.json
+            echidna_output.txt
             out
+          if-no-files-found: ignore
+        
