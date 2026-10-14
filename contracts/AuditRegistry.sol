@@ -6,6 +6,7 @@ contract AuditRegistry {
     struct AuditorProfile { string name; string firmName; uint256 totalAudits; uint256 registeredAt; bool isVerified; }
     error NotOwner(); error NotVerifiedAuditor(); error EmptyAuditId(); error EmptyReportHash(); error ScoreTooHigh(); error AuditIdExists(); error ReportHashExists(); error AuditNotFound(); error AlreadyInvalidated(); error AlreadyRegistered(); error ZeroAddress(); error NotAuthorized();
     address public owner;
+    address public timelock;
     mapping(string => AuditRecord) public audits;
     mapping(bytes32 => string) public hashToAuditId;
     mapping(address => string[]) public contractAudits;
@@ -18,6 +19,7 @@ contract AuditRegistry {
     event AuditorRegistered(address indexed auditor, string name, string firmName);
     event AuditorVerified(address indexed auditor, bool verified);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event TimelockUpdated(address indexed previousTimelock, address indexed newTimelock);
     modifier onlyOwner() { if (msg.sender != owner) revert NotOwner(); _; }
     modifier onlyVerifiedAuditor() { if (!verifiedAuditors[msg.sender] && msg.sender != owner) revert NotVerifiedAuditor(); _; }
     constructor() { owner = msg.sender; verifiedAuditors[msg.sender] = true; auditors[msg.sender] = AuditorProfile("Solay39 Official", "Solay39 Security", 0, block.timestamp, true); }
@@ -35,5 +37,6 @@ contract AuditRegistry {
     function registerAuditor(string calldata name, string calldata firmName) external { if (auditors[msg.sender].registeredAt != 0) revert AlreadyRegistered(); auditors[msg.sender] = AuditorProfile(name, firmName, 0, block.timestamp, false); emit AuditorRegistered(msg.sender, name, firmName); }
     function setAuditorVerification(address auditor, bool verified) external onlyOwner { verifiedAuditors[auditor] = verified; auditors[auditor].isVerified = verified; emit AuditorVerified(auditor, verified); }
     function transferOwnership(address newOwner) external onlyOwner { if (newOwner == address(0)) revert ZeroAddress(); address previousOwner = owner; owner = newOwner; emit OwnershipTransferred(previousOwner, newOwner); }
+    function setTimelock(address newTimelock) external onlyOwner { address previousTimelock = timelock; timelock = newTimelock; emit TimelockUpdated(previousTimelock, newTimelock); }
     function _toHexString(bytes32 data) internal pure returns (string memory) { bytes memory alphabet = "0123456789abcdef"; bytes memory str = new bytes(64); for (uint i; i < 32; i++) { str[i*2] = alphabet[uint8(data[i] >> 4)]; str[i*2+1] = alphabet[uint8(data[i] & 0x0f)]; } return string(str); }
 }

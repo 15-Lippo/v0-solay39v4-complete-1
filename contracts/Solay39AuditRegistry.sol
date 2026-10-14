@@ -20,6 +20,7 @@ contract Solay39AuditRegistry {
     event AuditorRegistered(address indexed auditor, string name, string firmName);
     constructor() { owner = msg.sender; }
     modifier onlyOwnerMod() { if (msg.sender != owner) revert OnlyOwner(); _; }
+    modifier onlyOwnerOrTimelock() { if (msg.sender != owner && msg.sender != timelock) revert OnlyOwner(); _; }
     function registerAudit(string calldata projectName, string calldata reportHash, string calldata codeReference, string calldata ipfsCid, uint8 score) external onlyOwnerMod returns (bytes32 auditId) {
         if (bytes(projectName).length == 0 || bytes(reportHash).length == 0) revert EmptyField();
         if (score > 100) revert InvalidScore();
@@ -31,7 +32,7 @@ contract Solay39AuditRegistry {
         _hashToId[reportHash] = auditId; _auditIds.push(auditId); totalAudits++;
         emit AuditRegistered(auditId, projectName, reportHash, ipfsCid, score, msg.sender, block.timestamp);
     }
-    function invalidateAudit(bytes32 auditId, string calldata reason) external onlyOwnerMod { if (_audits[auditId].timestamp == 0) revert AuditNotFound(); _audits[auditId].valid = false; emit AuditInvalidated(auditId, reason); }
+    function invalidateAudit(bytes32 auditId, string calldata reason) external onlyOwnerOrTimelock { if (_audits[auditId].timestamp == 0) revert AuditNotFound(); _audits[auditId].valid = false; emit AuditInvalidated(auditId, reason); }
     function verifyAudit(bytes32 auditId) external view returns (bool exists, bool valid, string memory projectName, string memory reportHash, string memory ipfsCid, uint8 score, uint256 timestamp) { AuditRecord memory r = _audits[auditId]; if (r.timestamp == 0) return (false, false, "", "", "", 0, 0); return (true, r.valid, r.projectName, r.reportHash, r.ipfsCid, r.score, r.timestamp); }
     function getAllAuditIds() external view returns (bytes32[] memory) { return _auditIds; }
 
