@@ -9,40 +9,28 @@ on:
 
 jobs:
   foundry:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Foundry (forge & cast)
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Verify Foundry tools
+        shell: bash
         run: |
-          curl -sSfL https://foundry.paradigm.xyz | bash || true
-          for dir in "$HOME/.foundry/bin" "$HOME/.config/.foundry/bin" "$HOME/.config/foundry/bin"; do
-            if [ -d "$dir" ]; then
-              echo "$dir" >> "$GITHUB_PATH"
-              export PATH="$dir:$PATH"
-            fi
-          done
-          foundryup || echo "foundryup verification reported an issue; continuing to validate forge" >&2
-          forge_path="$(find "$HOME" -maxdepth 6 -type f -name forge -executable -print -quit 2>/dev/null || true)"
-          if [ -n "$forge_path" ]; then
-            forge_dir="$(dirname "$forge_path")"
-            echo "$forge_dir" >> "$GITHUB_PATH"
-            export PATH="$forge_dir:$PATH"
-          fi
-          command -v forge
+          set -euo pipefail
           forge --version
+          cast --version
+          chisel --version
 
-      - name: Install Python tools (optional for slither/mythril)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common git curl build-essential
-          python3 -m pip install --upgrade pip
-          pip3 install slither-analyzer mythril || true
-
-      - name: Install project deps (if any)
-        run: |
-          echo "No project-specific install steps defined"
-
-      - name: Run Foundry tests
+      - name: Run Forge tests
+        shell: bash
         run: forge test -vvvv
+
+      - name: Run Forge coverage
+        shell: bash
+        run: forge coverage --report summary --report lcov

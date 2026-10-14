@@ -26,6 +26,9 @@ Independent review of the Solidity registries and their deployment configuration
 
 ## Evidence to provide
 - Commit SHA and `foundry.toml`.
+- Threat model and trust assumptions from `THREAT_MODEL.md`.
+- Reproducible-build output from `scripts/verify_reproducible_build.sh`, including compiler/config and artifact hash manifest.
+- Submission archive created by `scripts/package_artifacts.sh` after the final CI run.
 - Forge test, coverage, Slither, Mythril, and Echidna artifacts.
 - Verified explorer links and deployment transactions for every network.
 - `owner()`, `timelock()`, and role-member call results, plus `eth_getCode` for administrators.
