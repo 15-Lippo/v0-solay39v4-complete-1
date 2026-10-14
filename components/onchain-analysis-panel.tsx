@@ -6,6 +6,8 @@ interface AnalysisResult {
   tokenData: {
     name: string
     symbol: string
+    tokenName?: string
+    tokenSymbol?: string
     network: string
     tokenAddress: string
     totalSupply: string
@@ -14,6 +16,7 @@ interface AnalysisResult {
     marketCap?: number
     volume24h?: number
     totalHolders: number
+    holders?: number
     mintAuthority?: string | null
     freezeAuthority?: string | null
     topHolders: { address: string; percentage: number }[]

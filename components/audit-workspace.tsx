@@ -1226,7 +1226,7 @@ export function AuditWorkspace({ onLogout }: { onLogout: () => void }) {
       // Manual On-Chain Analysis for PDF export
       // Use dedicated onChainAnalysisData state (populated immediately on SAVE TO AUDIT)
       // with fallback to manualReviewSession.onChainAnalysis (populated on full review completion)
-      onChainAnalysis: (onChainAnalysisData || manualReviewSession?.onChainAnalysis) ? {
+      onChainAnalysis: (onChainAnalysisData ?? manualReviewSession?.onChainAnalysis ?? undefined) ? {
         // Token info
         tokenName: onChainAnalysisData?.tokenName || manualReviewSession?.onChainAnalysis?.tokenName,
         tokenSymbol: onChainAnalysisData?.tokenSymbol || manualReviewSession?.onChainAnalysis?.tokenSymbol,
@@ -1690,7 +1690,7 @@ const TABS: [TabId, string][] = [
       note: c.note || "",
     })),
     // Manual On-Chain Analysis - use dedicated state with fallback
-    onChainAnalysis: (onChainAnalysisData || manualReviewSession?.onChainAnalysis) ? {
+    onChainAnalysis: (onChainAnalysisData ?? manualReviewSession?.onChainAnalysis ?? undefined) ? {
       tokenName: onChainAnalysisData?.tokenName || manualReviewSession?.onChainAnalysis?.tokenName,
       tokenSymbol: onChainAnalysisData?.tokenSymbol || manualReviewSession?.onChainAnalysis?.tokenSymbol,
       tokenAddress: onChainAnalysisData?.tokenAddress || manualReviewSession?.onChainAnalysis?.tokenAddress,
@@ -1717,7 +1717,7 @@ const TABS: [TabId, string][] = [
       overallRiskScore: onChainAnalysisData?.overallRiskScore || manualReviewSession?.onChainAnalysis?.overallRiskScore,
       scores: onChainAnalysisData?.scores || manualReviewSession?.onChainAnalysis?.scores,
       topHolders: onChainAnalysisData?.topHolders || manualReviewSession?.onChainAnalysis?.topHolders,
-    } : undefined,
+    } as unknown as typeof onChainAnalysisData : undefined,
   })}
                   className="w-full"
                 >

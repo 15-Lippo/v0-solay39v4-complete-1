@@ -288,10 +288,6 @@ export interface PortfolioProject {
   contractAddress?: string
   address?: string
   scope?: string
-  scoreBreakdownAI?: Record<string, unknown>
-  flashLoanScenarios?: AttackScenario[]
-  mevExposure?: unknown[]
-  architectureRecommendations?: string[]
   aiEngagement?: Record<string, unknown>
   aiScopeTable?: unknown
   pdfUrl?: string

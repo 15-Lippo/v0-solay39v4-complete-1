@@ -88,10 +88,10 @@ interface ValidationSuggestion {
 }
 
 interface ReportData {
-  mintFunction: string
-  proxyContract: string
-  selfDestruct: string
-  ownershipRenounced: string
+  mintFunction: string | boolean | null
+  proxyContract: string | boolean | null
+  selfDestruct: string | boolean | null
+  ownershipRenounced: string | boolean | null
   centralizationLevel: string
   compilerVersion: string
   ozVersion: string
@@ -144,7 +144,7 @@ function analyzeSourceCode(sourceCode: string, reportData: Partial<ReportData> &
   })()
 
   const reportSaysMintNo =
-    reportData?.mintFunction === false ||
+    reportData?.mintFunction === false || reportData?.mintFunction === "false" ||
     reportData?.mintFunction === "No" ||
     reportData?.mintFunction === "no"
 
@@ -203,7 +203,7 @@ function analyzeSourceCode(sourceCode: string, reportData: Partial<ReportData> &
   const hasSelfDestruct = /selfdestruct\s*\(|suicide\s*\(/i.test(srcRaw)
 
   const reportSaysSelfDestructNo =
-    reportData?.selfDestruct === false || reportData?.selfDestruct === "No"
+    reportData?.selfDestruct === false || reportData?.selfDestruct === "false" || reportData?.selfDestruct === "No"
 
   if (hasSelfDestruct && reportSaysSelfDestructNo) {
     issues.push({
@@ -221,7 +221,7 @@ function analyzeSourceCode(sourceCode: string, reportData: Partial<ReportData> &
     /delegatecall|TransparentUpgradeableProxy|UUPSUpgradeable|ERC1967|_implementation\s*\(\)|ProxyAdmin/i.test(srcRaw)
 
   const reportSaysProxyNo =
-    reportData?.proxyContract === false || reportData?.proxyContract === "No"
+    reportData?.proxyContract === false || reportData?.proxyContract === "false" || reportData?.proxyContract === "No"
 
   if (hasProxy && reportSaysProxyNo) {
     issues.push({
@@ -618,7 +618,7 @@ export default function Solay39Validator() {
                       {label.toUpperCase()}
                     </label>
                     <select
-                      value={reportData[key]}
+                      value={reportData[key] == null ? "" : String(reportData[key])}
                       onChange={(e) => setReportData((p) => ({ ...p, [key]: e.target.value }))}
                       style={{
                         width: "100%", background: "#050A0F",
@@ -809,10 +809,10 @@ export default function Solay39Validator() {
               gap: 12, marginBottom: 32,
             }}>
               {[
-                { label: "CRITICAL", count: criticalCount, ...SEV.CRITICAL },
-                { label: "HIGH", count: highCount, ...SEV.HIGH },
-                { label: "MEDIUM", count: medCount, ...SEV.MEDIUM },
-                { label: "LOW", count: lowCount, ...SEV.LOW },
+                { count: criticalCount, ...SEV.CRITICAL },
+                { count: highCount, ...SEV.HIGH },
+                { count: medCount, ...SEV.MEDIUM },
+                { count: lowCount, ...SEV.LOW },
               ].map((s) => (
                 <div key={s.label} style={{
                   background: s.count > 0 ? s.bg : "#0A1520",
