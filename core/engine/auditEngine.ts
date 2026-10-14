@@ -226,9 +226,9 @@ export async function runAuditEngine(
   } = {}
 ): Promise<AuditEngineResult> {
   const parsing = parseContract(code)
-  const dependencies = scanDependencies(code, parsing)
-  const economic = analyzeEconomicAttacks(code, parsing)
-  const crossChain = analyzeCrossChain(code, parsing)
+  const dependencies = scanDependencies(code, parsing.contracts.flatMap((contract) => contract.imports))
+  const economic = analyzeEconomicAttacks(code)
+  const crossChain = analyzeCrossChain(code)
 
   const mainContract = parsing.contracts[0]
   const staticFindings = runStaticAnalysis(code, parsing)
@@ -905,12 +905,12 @@ function buildThreatModel(code: string, parsing: ParseResult, deps: DependencySc
   if (/ecrecover/.test(code) && !/nonce/.test(code)) threatScenarios.push("Signature replay attack")
   if (/block\.(timestamp|blockhash)/.test(code)) threatScenarios.push("Block manipulation attack")
   if (deps.externalCalls.length > 0) threatScenarios.push("Dependency failure cascade from external contract")
-  return { attackSurface, entryPoints, highValueTargets, attackers, threatScenarios }
+  return { attackSurface: attackSurface.map((entry) => entry.name), entryPoints, highValueTargets, attackers, threatScenarios }
 }
 
 function buildAttackSimulations(economic: EconomicAnalysisResult, staticFindings: StaticFinding[]): AttackSimulation[] {
   const sims: AttackSimulation[] = []
-  if (economic.flashLoanRisk === "HIGH" || economic.flashLoanRisk === "CRITICAL") {
+  if (economic.flashLoanRisk === "high") {
     sims.push({
       name: "Flash Loan Price Manipulation",
       type: "ECONOMIC",
