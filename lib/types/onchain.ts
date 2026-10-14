@@ -1,6 +1,9 @@
 export interface TokenData {
   tokenAddress?: string
+  tokenName?: string
+  tokenSymbol?: string
   network?: string
+  tokenNetwork?: string
   name?: string
   symbol?: string
   decimals?: number
@@ -10,6 +13,7 @@ export interface TokenData {
   owner?: string | null
   topHolders?: { address: string; balance?: string; percentage?: number; label?: string }[]
   totalHolders?: number
+  holders?: number
   liquidityPools?: { dex: string; pair: string; liquidity: string; lpLocked: boolean }[]
   price?: number
   marketCap?: number
@@ -21,6 +25,15 @@ export interface TokenData {
 }
 
 export interface AnalysisData {
+  tokenName?: string
+  tokenSymbol?: string
+  tokenAddress?: string
+  tokenNetwork?: string
+  marketCap?: number
+  liquidity?: number
+  price?: number
+  volume24h?: number
+  holders?: number
   executiveSummary?: string
   tokenEconomics?: string
   whaleDistribution?: string
