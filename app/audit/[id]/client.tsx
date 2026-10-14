@@ -183,6 +183,14 @@ export function AuditDetailClient({ project, auditId }: { project: PortfolioProj
 
   return (
     <AuditErrorBoundary auditId={auditId}>
+      {auditId === "inj-token" && (
+        <div className="border-b border-s39-cyan/20 bg-s39-bg1 px-5 py-3 text-center font-mono text-[10px] tracking-wide text-s39-dim">
+          <span>Looking for registry governance evidence?</span>{" "}
+          <a href="/audit/solay39-registries" className="text-s39-cyan underline underline-offset-4 hover:text-s39-green">
+            View related registry deployment proof
+          </a>
+        </div>
+      )}
       <ProjectDetail
         p={liveProject}
         backHref="/"
