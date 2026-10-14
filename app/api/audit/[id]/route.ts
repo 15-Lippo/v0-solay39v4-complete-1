@@ -27,7 +27,7 @@ export async function GET(
       return NextResponse.json({ error: "Audit not found" }, { status: 404 })
     }
     
-    const res = await fetch(blobs[0].url)
+    const res = await fetch(blobs[0].url, { cache: "no-store" })
     if (!res.ok) {
       return NextResponse.json({ error: "Failed to fetch audit" }, { status: 500 })
     }
