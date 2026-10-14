@@ -54,14 +54,52 @@ jobs:
           else
             echo "Mythril installation failed; continuing with Mythril skipped." | tee reports/mythril_output.txt
           fi
-      - name: Install Foundry
+      - name: Install Foundry (try official action, tolerant)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+        continue-on-error: true
+
+      - name: Ensure Foundry installed (fallback installer)
         shell: bash
         run: |
           set -euxo pipefail
-          curl -L https://foundry.paradigm.xyz | bash
-          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
-          "$HOME/.foundry/bin/foundryup"
-          "$HOME/.foundry/bin/forge" --version
+          if command -v forge >/dev/null 2>&1; then
+            echo "forge already installed at $(command -v forge)"
+            forge --version || true
+            exit 0
+          fi
+
+          echo "forge not on PATH after foundry-toolchain action; attempting fallback..."
+          curl -sSfL https://foundry.paradigm.xyz | bash || true
+
+          for dir in "$HOME/.foundry/bin" "$HOME/.config/.foundry/bin" "$HOME/.config/foundry/bin"; do
+            if [ -d "$dir" ]; then
+              echo "$dir" >> "$GITHUB_PATH"
+              export PATH="$dir:$PATH"
+            fi
+          done
+
+          if [ -x "$HOME/.foundry/bin/foundryup" ]; then
+            "$HOME/.foundry/bin/foundryup" || true
+          elif [ -x "$HOME/.config/.foundry/bin/foundryup" ]; then
+            "$HOME/.config/.foundry/bin/foundryup" || true
+          fi
+
+          forge_path=$(find "$HOME" -maxdepth 6 -type f -name forge -executable -print -quit 2>/dev/null || true)
+          if [ -n "$forge_path" ]; then
+            forge_dir="$(dirname "$forge_path")"
+            echo "$forge_dir" >> "$GITHUB_PATH"
+            export PATH="$forge_dir:$PATH"
+          fi
+
+          if command -v forge >/dev/null 2>&1; then
+            forge --version || true
+          else
+            echo "WARNING: forge not found; printing diagnostics" >&2
+            ls -la "$HOME" "$HOME/.config" "$HOME/.foundry" 2>/dev/null || true
+            find "$HOME" -maxdepth 6 -type f -name forge -print 2>/dev/null | head -n 50 || true
+          fi
       - name: Ensure Foundry bin on PATH
         shell: bash
         run: |
