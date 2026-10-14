@@ -13,6 +13,11 @@ if ! command -v forge >/dev/null 2>&1; then
   VERSION_DIR="$(find "$HOME/.foundry/versions/foundry-rs/foundry" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1)"
   if [ -n "$VERSION_DIR" ] && [ -x "$VERSION_DIR/forge" ]; then
     export PATH="$VERSION_DIR:$PATH"
+    for tool in forge cast anvil chisel; do
+      if [ -x "$VERSION_DIR/$tool" ]; then
+        ln -sf "$VERSION_DIR/$tool" "$FOUNDRY_BIN/$tool"
+      fi
+    done
   fi
 fi
 
