@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { put, list } from "@vercel/blob"
+import type { OnChainAnalysis } from "@/lib/types/onchain"
+import { toBool, toStringOrUndefined } from "@/lib/utils/normalizeOnchain"
 
 /**
  * POST /api/onchain-audit-merge
@@ -15,53 +17,6 @@ import { put, list } from "@vercel/blob"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface OnChainAnalysis {
-  tokenData: {
-    tokenAddress: string
-    network: string
-    name: string
-    symbol: string
-    decimals: number
-    totalSupply: string
-    mintAuthority?: string | null
-    freezeAuthority?: string | null
-    owner?: string | null
-    topHolders: { address: string; balance: string; percentage: number; label?: string }[]
-    totalHolders: number
-    liquidityPools: { dex: string; pair: string; liquidity: string; lpLocked: boolean }[]
-    price?: number
-    marketCap?: number
-    volume24h?: number
-    isVerified?: boolean
-    hasMintFunction?: boolean
-    hasPauseFunction?: boolean
-    hasBlacklistFunction?: boolean
-  }
-  analysis: {
-    executiveSummary: string
-    tokenEconomics: string
-    whaleDistribution: string
-    insiderWallets: string
-    devWalletAnalysis: string
-    supplyAnalysis: string
-    rugPullRisk: string
-    priceManipulation: string
-    hiddenGovernance: string
-    complexBugs: string
-    liquidityAnalysis: string
-    clusterAnalysis: string
-    scenarioAnalysis: string
-    overallRiskScore: number
-    scores: {
-      smartContractSecurity: number
-      decentralization: number
-      liquidityHealth: number
-      manipulationRisk: string
-    }
-    recommendation: string
-  }
-  timestamp: string
-}
 
 // ── Map onchain analysis → audit finding severity ─────────────────────────────
 
@@ -83,9 +38,60 @@ function scoreToLabel(score: number, max = 10): string {
 
 // ── Build audit sections from onchain data ────────────────────────────────────
 
-function buildAuditSections(onchain: OnChainAnalysis) {
+function normalizeOnchain(input: unknown): OnChainAnalysis {
+  const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>
+  const td = (raw.tokenData && typeof raw.tokenData === "object" ? raw.tokenData : {}) as Record<string, unknown>
+  const analysis = (raw.analysis && typeof raw.analysis === "object" ? raw.analysis : {}) as Record<string, unknown>
+  const rawScores = (analysis.scores && typeof analysis.scores === "object" ? analysis.scores : {}) as Record<string, unknown>
+
+  return {
+    tokenData: {
+      tokenAddress: toStringOrUndefined(td.tokenAddress),
+      network: toStringOrUndefined(td.network),
+      name: toStringOrUndefined(td.name),
+      symbol: toStringOrUndefined(td.symbol),
+      decimals: typeof td.decimals === "number" ? td.decimals : undefined,
+      totalSupply: toStringOrUndefined(td.totalSupply),
+      mintAuthority: toStringOrUndefined(td.mintAuthority) ?? null,
+      freezeAuthority: toStringOrUndefined(td.freezeAuthority) ?? null,
+      owner: toStringOrUndefined(td.owner) ?? null,
+      topHolders: Array.isArray(td.topHolders) ? td.topHolders as OnChainAnalysis["tokenData"]["topHolders"] : [],
+      totalHolders: typeof td.totalHolders === "number" ? td.totalHolders : undefined,
+      liquidityPools: Array.isArray(td.liquidityPools) ? td.liquidityPools as OnChainAnalysis["tokenData"]["liquidityPools"] : [],
+      price: typeof td.price === "number" ? td.price : undefined,
+      marketCap: typeof td.marketCap === "number" ? td.marketCap : undefined,
+      volume24h: typeof td.volume24h === "number" ? td.volume24h : undefined,
+      isVerified: toBool(td.isVerified),
+      hasMintFunction: toBool(td.hasMintFunction),
+      hasPauseFunction: toBool(td.hasPauseFunction),
+      hasBlacklistFunction: toBool(td.hasBlacklistFunction),
+    },
+    analysis: {
+      ...analysis as OnChainAnalysis["analysis"],
+      scores: {
+        smartContractSecurity: typeof rawScores.smartContractSecurity === "number" ? rawScores.smartContractSecurity : 0,
+        decentralization: typeof rawScores.decentralization === "number" ? rawScores.decentralization : undefined,
+        liquidityHealth: typeof rawScores.liquidityHealth === "number" ? rawScores.liquidityHealth : 0,
+        manipulationRisk: toStringOrUndefined(rawScores.manipulationRisk),
+      },
+    },
+    timestamp: toStringOrUndefined(raw.timestamp),
+  }
+}
+
+function buildAuditSections(onchainInput: unknown) {
+  const onchain = normalizeOnchain(onchainInput)
   const { tokenData: td, analysis: a } = onchain
-  const totalLiquidity = td.liquidityPools.reduce(
+  const pools = td.liquidityPools ?? []
+  const holders = td.topHolders ?? []
+  const scores = {
+    smartContractSecurity: a.scores?.smartContractSecurity ?? 0,
+    decentralization: a.scores?.decentralization ?? 0,
+    liquidityHealth: a.scores?.liquidityHealth ?? 0,
+    manipulationRisk: a.scores?.manipulationRisk,
+  }
+  const riskScore = a.overallRiskScore ?? 0
+  const totalLiquidity = pools.reduce(
     (sum, lp) => sum + parseFloat(lp.liquidity || "0"),
     0
   )
@@ -125,7 +131,7 @@ function buildAuditSections(onchain: OnChainAnalysis) {
   }
 
   // 2. Whale concentration
-  const top6Pct = td.topHolders.slice(0, 6).reduce((sum, h) => sum + h.percentage, 0)
+  const top6Pct = holders.slice(0, 6).reduce((sum, h) => sum + (h.percentage ?? 0), 0)
   if (top6Pct > 50) {
     findings.push({
       id: "OC-003",
@@ -142,7 +148,7 @@ function buildAuditSections(onchain: OnChainAnalysis) {
   }
 
   // 3. LP not locked
-  const lpLocked = td.liquidityPools.some((lp) => lp.lpLocked)
+  const lpLocked = pools.some((lp) => lp.lpLocked)
   if (!lpLocked && totalLiquidity > 0) {
     findings.push({
       id: "OC-004",
@@ -158,7 +164,7 @@ function buildAuditSections(onchain: OnChainAnalysis) {
     })
   }
 
-  if (td.liquidityPools.length === 0) {
+  if (pools.length === 0) {
     findings.push({
       id: "OC-005",
       title: "No Liquidity Pool Found",
@@ -226,8 +232,8 @@ function buildAuditSections(onchain: OnChainAnalysis) {
       id: "onchain-executive",
       title: "Executive Summary (On-Chain)",
       icon: "📋",
-      badge: a.overallRiskScore >= 60 ? "WARNING" : a.overallRiskScore >= 30 ? "MEDIUM" : "SAFE",
-      severity: riskScoreToSeverity(a.overallRiskScore),
+      badge: riskScore >= 60 ? "WARNING" : riskScore >= 30 ? "MEDIUM" : "SAFE",
+      severity: riskScoreToSeverity(riskScore),
       content: a.executiveSummary,
       score: null,
       source: "onchain",
@@ -281,8 +287,8 @@ function buildAuditSections(onchain: OnChainAnalysis) {
       id: "onchain-rugpull",
       title: "Rug Pull Risk (Direct & Indirect)",
       icon: "⚠️",
-      badge: a.overallRiskScore >= 50 ? "WARNING" : "SAFE",
-      severity: riskScoreToSeverity(a.overallRiskScore),
+      badge: riskScore >= 50 ? "WARNING" : "SAFE",
+      severity: riskScoreToSeverity(riskScore),
       content: a.rugPullRisk,
       source: "onchain",
     },
@@ -290,8 +296,8 @@ function buildAuditSections(onchain: OnChainAnalysis) {
       id: "onchain-manipulation",
       title: "Price Manipulation Vulnerability",
       icon: "📉",
-      badge: a.scores.manipulationRisk,
-      severity: a.scores.manipulationRisk === "HIGH" ? "high" : a.scores.manipulationRisk === "MEDIUM" ? "medium" : "info",
+      badge: scores.manipulationRisk,
+      severity: scores.manipulationRisk === "HIGH" ? "high" : scores.manipulationRisk === "MEDIUM" ? "medium" : "info",
       content: a.priceManipulation,
       source: "onchain",
     },
@@ -308,8 +314,8 @@ function buildAuditSections(onchain: OnChainAnalysis) {
       id: "onchain-bugs",
       title: "Complex Smart Contract Bugs",
       icon: "🔬",
-      badge: scoreToLabel(a.scores.smartContractSecurity),
-      severity: a.scores.smartContractSecurity <= 3 ? "critical" : a.scores.smartContractSecurity <= 5 ? "high" : "medium",
+      badge: scoreToLabel(scores.smartContractSecurity),
+      severity: scores.smartContractSecurity <= 3 ? "critical" : scores.smartContractSecurity <= 5 ? "high" : "medium",
       content: a.complexBugs,
       source: "onchain",
     },
@@ -317,8 +323,8 @@ function buildAuditSections(onchain: OnChainAnalysis) {
       id: "onchain-liquidity",
       title: "Liquidity Health Analysis",
       icon: "💧",
-      badge: scoreToLabel(a.scores.liquidityHealth),
-      severity: a.scores.liquidityHealth <= 3 ? "critical" : a.scores.liquidityHealth <= 5 ? "high" : "info",
+      badge: scoreToLabel(scores.liquidityHealth),
+      severity: scores.liquidityHealth <= 3 ? "critical" : scores.liquidityHealth <= 5 ? "high" : "info",
       content: a.liquidityAnalysis,
       source: "onchain",
     },
@@ -344,12 +350,12 @@ function buildAuditSections(onchain: OnChainAnalysis) {
 
   // ── Summary scores to inject into the audit score panel ──────────────────
   const scorePanel = {
-    riskScore: a.overallRiskScore,
-    riskLabel: a.overallRiskScore >= 70 ? "HIGH RISK" : a.overallRiskScore >= 40 ? "MEDIUM RISK" : "LOW RISK",
-    contractScore: `${a.scores.smartContractSecurity}/10`,
-    decentralizationScore: `${a.scores.decentralization}/10`,
-    liquidityScore: `${a.scores.liquidityHealth}/10`,
-    manipulationRisk: a.scores.manipulationRisk,
+    riskScore: riskScore,
+    riskLabel: riskScore >= 70 ? "HIGH RISK" : riskScore >= 40 ? "MEDIUM RISK" : "LOW RISK",
+    contractScore: `${scores.smartContractSecurity}/10`,
+    decentralizationScore: `${scores.decentralization}/10`,
+    liquidityScore: `${scores.liquidityHealth}/10`,
+    manipulationRisk: scores.manipulationRisk,
     marketCap: td.marketCap ? `$${td.marketCap.toLocaleString()}` : "N/A",
     totalHolders: td.totalHolders,
     liquidity: `$${totalLiquidity.toLocaleString()}`,
