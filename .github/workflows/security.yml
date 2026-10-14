@@ -35,6 +35,7 @@ jobs:
           # so Forge/Slither reports and the always-run artifact upload are retained.
           python -m venv "$RUNNER_TEMP/mythril-tools"
           if "$RUNNER_TEMP/mythril-tools/bin/python" -m pip install --upgrade pip setuptools wheel mythril; then
+            export PATH="$RUNNER_TEMP/mythril-tools/bin:$PATH"
             echo "$RUNNER_TEMP/mythril-tools/bin" >> "$GITHUB_PATH"
             myth version
           else
