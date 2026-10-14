@@ -5,6 +5,7 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
+  workflow_dispatch:
 
 jobs:
   foundry:
@@ -15,13 +16,20 @@ jobs:
 
       - name: Install Foundry (forge & cast)
         run: |
-          curl -L https://foundry.paradigm.xyz | bash
-          source "$HOME/.bashrc" || true
-          export PATH="$HOME/.foundry/bin:$PATH"
+          curl -sSfL https://foundry.paradigm.xyz | bash || true
+          for dir in "$HOME/.foundry/bin" "$HOME/.config/.foundry/bin" "$HOME/.config/foundry/bin"; do
+            if [ -d "$dir" ]; then
+              echo "$dir" >> "$GITHUB_PATH"
+              export PATH="$dir:$PATH"
+            fi
+          done
           foundryup || echo "foundryup verification reported an issue; continuing to validate forge" >&2
-          VERSION_DIR="$(find "$HOME/.foundry/versions/foundry-rs/foundry" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1)"
-          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
-          if [ -n "$VERSION_DIR" ]; then echo "$VERSION_DIR" >> "$GITHUB_PATH"; export PATH="$VERSION_DIR:$PATH"; fi
+          forge_path="$(find "$HOME" -maxdepth 6 -type f -name forge -executable -print -quit 2>/dev/null || true)"
+          if [ -n "$forge_path" ]; then
+            forge_dir="$(dirname "$forge_path")"
+            echo "$forge_dir" >> "$GITHUB_PATH"
+            export PATH="$forge_dir:$PATH"
+          fi
           command -v forge
           forge --version
 
