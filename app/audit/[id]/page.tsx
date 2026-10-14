@@ -65,7 +65,7 @@ type Props = { params: Promise<{ id: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const { id } = await params
-    const p = projectMap.get(id) || (await fetchBlobAudit(id))
+    const p = projectMap.get(id)
 
     if (!p) {
       return { title: "Audit Not Found | Solay39", description: "This audit report does not exist." }
@@ -101,7 +101,8 @@ export async function generateStaticParams() {
 export default async function AuditPage({ params }: Props) {
   try {
     const { id } = await params
-    const project: PortfolioProject | null = projectMap.get(id) || (await fetchBlobAudit(id)) || null
+    // Dynamic published audits load through the client API to avoid server-side rendering crashes on large reports.
+    const project: PortfolioProject | null = projectMap.get(id) || null
     return <AuditDetailClient project={project} auditId={id} />
   } catch {
     const { id } = await params
