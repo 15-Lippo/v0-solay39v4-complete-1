@@ -77,6 +77,9 @@ jobs:
           config: echidna/echidna.yaml
           format: text
           output: reports/echidna_output.txt
+      - name: Aggregate security reports
+        if: always()
+        run: python3 scripts/aggregate_reports.py --reports-dir reports --out reports/summary.json
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
