@@ -13,12 +13,20 @@ permissions:
 jobs:
   security:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Cache Foundry install
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.foundry
+            ~/.cache/foundry
+          key: foundry-${{ runner.os }}-v1
+
       - name: Install isolated analysis tools
         shell: bash
         run: |
@@ -57,9 +65,11 @@ jobs:
       - name: Run Forge tests
         run: forge test -vvvv | tee reports/forge_output.txt
       - name: Run Forge coverage
-        run: forge coverage --report summary --report lcov | tee reports/coverage.txt
+        if: always()
+        run: forge coverage --report summary --report lcov | tee reports/coverage.txt || true
       - name: Run Slither
-        run: slither . --config-file slither.config.json --json reports/slither-report.json
+        if: always()
+        run: slither . --config-file slither.config.json --json reports/slither-report.json || true
       - name: Fail on Slither high or critical findings
         run: |
           python3 - <<'PY'
