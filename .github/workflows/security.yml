@@ -81,12 +81,13 @@ jobs:
         if: always()
         run: python3 scripts/aggregate_reports.py --reports-dir reports --out reports/summary.json
       - name: Upload reports
-        if: always()
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: |
-            reports/
-            out
-          if-no-files-found: ignore
+            reports/**/*.json
+            reports/*.txt
+            out/**
+          if-no-files-found: warn
         
