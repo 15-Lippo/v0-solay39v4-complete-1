@@ -19,21 +19,26 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install analysis tools
-        run: python -m pip install --upgrade pip slither-analyzer mythril
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install slither-analyzer mythril
+          mkdir -p reports
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
       - name: Run Forge tests
-        run: forge test -vvvv
+        run: forge test -vvvv | tee reports/forge_output.txt
+      - name: Run Forge coverage
+        run: forge coverage --report summary --report lcov | tee reports/coverage.txt
       - name: Run Slither
-        run: slither . --config-file slither.config.json --json slither-report.json
+        run: slither . --config-file slither.config.json --json reports/slither-report.json
       - name: Fail on Slither high or critical findings
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p = Path("slither-report.json")
+          p = Path("reports/slither-report.json")
           data = json.loads(p.read_text())
           issues = data.get("results", {}).get("detectors", data.get("results", []))
           bad = [i for i in issues if str(i.get("impact", "")).lower() in {"high", "critical"}]
@@ -42,35 +47,43 @@ jobs:
           print("No Slither high/critical findings")
           PY
       - name: Run Mythril
-        run: myth analyze contracts/Solay39EnterpriseRegistry.sol -o json --execution-timeout 120 > mythril-report.json
+        run: |
+          for contract in contracts/Solay39EnterpriseRegistry.sol contracts/Solay39AuditRegistry.sol contracts/AuditRegistry.sol; do
+            name="$(basename "$contract" .sol)"
+            myth analyze "$contract" -o json --execution-timeout 120 > "reports/mythril-${name}.json"
+          done
       - name: Fail on Mythril high or critical findings
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          data = json.loads(Path("mythril-report.json").read_text())
-          issues = data.get("issues", [])
-          bad = [i for i in issues if str(i.get("severity", "")).lower() in {"high", "critical"}]
+          reports = list(Path("reports").glob("mythril-*.json"))
+          bad = []
+          for report in reports:
+              data = json.loads(report.read_text())
+              for issue in data.get("issues", []):
+                  if str(issue.get("severity", "")).lower() in {"high", "critical"}:
+                      bad.append((report.name, issue))
           if bad:
               raise SystemExit(f"Mythril found {len(bad)} high/critical finding(s)")
           print("No Mythril high/critical findings")
           PY
-      - name: Run Echidna when installed
-        run: |
-          if command -v echidna-test >/dev/null 2>&1 && [ -f echidna/echidna.yaml ]; then
-            echidna-test echidna --config echidna/echidna.yaml
-          else
-            echo "Echidna unavailable; run it in the security Docker image."
-          fi
+      - name: Run Echidna
+        if: hashFiles('echidna/echidna.yaml', 'echidna/EchidnaHarness.sol') != ''
+        uses: crytic/echidna-action@v2
+        with:
+          files: .
+          contract: EchidnaHarness
+          config: echidna/echidna.yaml
+          format: text
+          output: reports/echidna_output.txt
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: |
-            slither-report.json
-            mythril-report.json
-            echidna_output.txt
+            reports/
             out
           if-no-files-found: ignore
         
