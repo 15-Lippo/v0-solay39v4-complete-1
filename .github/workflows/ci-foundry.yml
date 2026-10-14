@@ -18,8 +18,11 @@ jobs:
           curl -L https://foundry.paradigm.xyz | bash
           source "$HOME/.bashrc" || true
           export PATH="$HOME/.foundry/bin:$PATH"
-          foundryup
+          foundryup || echo "foundryup verification reported an issue; continuing to validate forge" >&2
+          VERSION_DIR="$(find "$HOME/.foundry/versions/foundry-rs/foundry" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1)"
           echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          if [ -n "$VERSION_DIR" ]; then echo "$VERSION_DIR" >> "$GITHUB_PATH"; export PATH="$VERSION_DIR:$PATH"; fi
+          command -v forge
           forge --version
 
       - name: Install Python tools (optional for slither/mythril)

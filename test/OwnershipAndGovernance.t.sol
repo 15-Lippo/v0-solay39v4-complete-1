@@ -37,4 +37,3 @@ contract OwnershipAndGovernanceTest is Test {
         assertTrue(registry.verifiedAuditors(address(0xCAFE)));
     }
 }
-Content omitted for brevity? no, actual content needed.
