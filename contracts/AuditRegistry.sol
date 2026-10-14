@@ -15,7 +15,7 @@ contract AuditRegistry {
     uint256 public totalAudits; uint256 public auditNonce;
     mapping(address => bool) public verifiedAuditors;
     event AuditRegistered(string indexed auditId, bytes32 indexed reportHash, address indexed auditedContract, address auditor, uint8 score, string ipfsCid, uint256 timestamp);
-    event AuditInvalidated(string indexed auditId, address indexed auditor, string reason);
+    event AuditInvalidated(string indexed auditId, address indexed actor, string reason);
     event AuditorRegistered(address indexed auditor, string name, string firmName);
     event AuditorVerified(address indexed auditor, bool verified);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -28,7 +28,7 @@ contract AuditRegistry {
         bytes32 raw = keccak256(abi.encode(auditNonce, msg.sender, reportHash, codeHash));
         _store(_toHexString(raw), reportHash, codeHash, auditedContract, score, ipfsCid); }
     function _store(string memory auditId, bytes32 reportHash, bytes32 codeHash, address auditedContract, uint8 score, string memory ipfsCid) internal { audits[auditId] = AuditRecord(reportHash, codeHash, auditedContract, msg.sender, block.timestamp, score, ipfsCid, auditId, true); hashToAuditId[reportHash] = auditId; if (auditedContract != address(0)) contractAudits[auditedContract].push(auditId); auditorAudits[msg.sender].push(auditId); auditors[msg.sender].totalAudits++; totalAudits++; emit AuditRegistered(auditId, reportHash, auditedContract, msg.sender, score, ipfsCid, block.timestamp); }
-    function invalidateAudit(string calldata auditId, string calldata reason) external { AuditRecord storage a = audits[auditId]; if (a.timestamp == 0) revert AuditNotFound(); if (a.auditor != msg.sender && msg.sender != owner) revert NotAuthorized(); if (!a.isValid) revert AlreadyInvalidated(); a.isValid = false; emit AuditInvalidated(auditId, msg.sender, reason); }
+    function invalidateAudit(string calldata auditId, string calldata reason) external { AuditRecord storage a = audits[auditId]; if (a.timestamp == 0) revert AuditNotFound(); if (a.auditor != msg.sender && msg.sender != owner && msg.sender != timelock) revert NotAuthorized(); if (!a.isValid) revert AlreadyInvalidated(); a.isValid = false; emit AuditInvalidated(auditId, msg.sender, reason); }
     function verifyByHash(bytes32 reportHash) external view returns (bool, bool, string memory, address, uint8, uint256) { string memory id = hashToAuditId[reportHash]; if (bytes(id).length == 0) return (false, false, "", address(0), 0, 0); AuditRecord storage a = audits[id]; return (true, a.isValid, id, a.auditor, a.score, a.timestamp); }
     function verifyById(string calldata id) external view returns (bool, bool, bytes32, address, address, uint8, string memory, uint256) { AuditRecord storage a = audits[id]; if (a.timestamp == 0) return (false, false, bytes32(0), address(0), address(0), 0, "", 0); return (true, a.isValid, a.reportHash, a.auditedContract, a.auditor, a.score, a.ipfsCid, a.timestamp); }
     function isContractAudited(address c) external view returns (bool, uint256, string memory) { string[] storage ids = contractAudits[c]; if (ids.length == 0) return (false, 0, ""); return (true, ids.length, ids[ids.length - 1]); }
