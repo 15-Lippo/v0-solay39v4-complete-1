@@ -208,11 +208,11 @@ jobs:
         if: hashFiles('echidna/echidna.yaml', 'echidna/EchidnaHarness.sol') != ''
         uses: crytic/echidna-action@v2
         with:
-          files: .
+          files: echidna/EchidnaHarness.sol
           contract: EchidnaHarness
           config: echidna/echidna.yaml
           format: text
-          output: reports/echidna_output.txt
+          output-file: reports/echidna_output.txt
       - name: Aggregate security reports
         if: always()
         run: |
