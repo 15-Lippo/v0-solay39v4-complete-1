@@ -4,15 +4,18 @@ pragma solidity ^0.8.20;
 contract Solay39AuditRegistry {
     struct AuditRecord { string projectName; string reportHash; string codeReference; string ipfsCid; uint8 score; address auditor; uint256 timestamp; bool valid; }
     error OnlyOwner(); error EmptyField(); error InvalidScore(); error HashAlreadyRegistered(); error AuditAlreadyExists(); error AuditNotFound();
-    address public immutable owner;
+    address public owner;
+    address public timelock;
     uint256 public totalAudits;
     uint256 public auditNonce;
+    error ZeroAddress();
     mapping(bytes32 => AuditRecord) private _audits;
     mapping(string => bytes32) private _hashToId;
     bytes32[] private _auditIds;
     event AuditRegistered(bytes32 indexed auditId, string projectName, string reportHash, string ipfsCid, uint8 score, address auditor, uint256 timestamp);
     event AuditInvalidated(bytes32 indexed auditId, string reason);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event TimelockUpdated(address indexed previousTimelock, address indexed newTimelock);
     event AuditorVerificationUpdated(address indexed auditor, bool verified);
     event AuditorRegistered(address indexed auditor, string name, string firmName);
     constructor() { owner = msg.sender; }
@@ -31,4 +34,17 @@ contract Solay39AuditRegistry {
     function invalidateAudit(bytes32 auditId, string calldata reason) external onlyOwnerMod { if (_audits[auditId].timestamp == 0) revert AuditNotFound(); _audits[auditId].valid = false; emit AuditInvalidated(auditId, reason); }
     function verifyAudit(bytes32 auditId) external view returns (bool exists, bool valid, string memory projectName, string memory reportHash, string memory ipfsCid, uint8 score, uint256 timestamp) { AuditRecord memory r = _audits[auditId]; if (r.timestamp == 0) return (false, false, "", "", "", 0, 0); return (true, r.valid, r.projectName, r.reportHash, r.ipfsCid, r.score, r.timestamp); }
     function getAllAuditIds() external view returns (bytes32[] memory) { return _auditIds; }
+
+    function transferOwnership(address newOwner) external onlyOwnerMod {
+        if (newOwner == address(0)) revert ZeroAddress();
+        address previousOwner = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(previousOwner, newOwner);
+    }
+
+    function setTimelock(address newTimelock) external onlyOwnerMod {
+        address previousTimelock = timelock;
+        timelock = newTimelock;
+        emit TimelockUpdated(previousTimelock, newTimelock);
+    }
 }
