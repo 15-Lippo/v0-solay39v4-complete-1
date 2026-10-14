@@ -22,16 +22,22 @@ async function fetchBlobAudit(id: string): Promise<PortfolioProject | null> {
       blobs = result.blobs.filter(b => b.pathname.endsWith('.json'))
     }
     
-    // If still not found, search all audits and match by ID
+    // If still not found, search every paginated Blob page and match the stored filename.
+    // Vercel Blob list() is paginated; the previous single-page lookup silently missed older reports.
     if (blobs.length === 0) {
-      const allResult = await list({ prefix: `audits/` })
-      const matchingBlob = allResult.blobs.find(b => 
-        b.pathname.includes(id) || 
-        b.pathname.replace('audits/', '').replace('.json', '') === id
-      )
-      if (matchingBlob) {
-        blobs = [matchingBlob]
-      }
+      const allBlobs: typeof blobs = []
+      let cursor: string | undefined
+      do {
+        const page = await list({ prefix: "audits/", limit: 1000, cursor })
+        allBlobs.push(...page.blobs)
+        cursor = page.cursor
+      } while (cursor)
+
+      const matchingBlob = allBlobs.find((b) => {
+        const storedId = b.pathname.replace(/^audits\//, "").replace(/\.json$/, "")
+        return storedId === id || b.pathname.includes(id)
+      })
+      if (matchingBlob) blobs = [matchingBlob]
     }
     
     if (blobs.length === 0) {
