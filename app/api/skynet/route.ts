@@ -2657,7 +2657,7 @@ const staticEconomicAttacks = analyzeEconomicAttacks(truncatedCode, {
         : []
 
       // Test Coverage for static path
-      const staticTestCoverage = analyzeTestCoverage(truncatedCode, meta, finalStaticFindings)
+      const staticTestCoverage = analyzeTestCoverage(truncatedCode, meta, finalStaticFindings.map((finding) => ({ severity: String(finding.severity ?? "INFO") })))
 
       // IPFS Pinning for static path
       const staticIpfsReportData = {

@@ -452,10 +452,11 @@ export function ProjectDetail({ p: _raw, onBack, isLive, backHref }: { p: Portfo
   const computedScore = getWeightedScore(p)
   const computedRating = ratingOf(computedScore)
   const sc = scoreColor(computedScore)
-  const totalFindings = p.criticals + p.highs + p.mediums + p.lows + p.infos || p.findings.length
-  const resolvedCount = p.findings.filter((f) => f.status === "RESOLVED").length
-  const openCount = p.findings.filter((f) => f.status === "OPEN").length
-  const ackCount = p.findings.filter((f) => f.status === "ACKNOWLEDGED").length
+  const findings = p.findings ?? []
+  const totalFindings = p.criticals + p.highs + p.mediums + p.lows + p.infos || findings.length
+  const resolvedCount = findings.filter((f) => f.status === "RESOLVED").length
+  const openCount = findings.filter((f) => f.status === "OPEN").length
+  const ackCount = findings.filter((f) => f.status === "ACKNOWLEDGED").length
 
   // Client Display Mode: hides internal scoring details, shows clean public view
   const [clientMode, setClientMode] = useState(false)
@@ -811,7 +812,7 @@ export function ProjectDetail({ p: _raw, onBack, isLive, backHref }: { p: Portfo
           </div>
         )}
 
-        {/* ═══════════ CLIENT MODE: Clean summary block ═══════════ */}
+        {/* ══════════�� CLIENT MODE: Clean summary block ═══════════ */}
         {clientMode && bd && (
           <div className="bg-s39-bg1 border border-s39-border p-5 sm:p-6 mb-4">
             <div className="flex items-center gap-2 mb-5">
@@ -2861,25 +2862,25 @@ export function ProjectDetail({ p: _raw, onBack, isLive, backHref }: { p: Portfo
               <span className="text-[7px] text-s39-dim bg-s39-bg2 border border-s39-border px-1.5 py-0.5 tracking-wider">BEYOND CERTIK</span>
             </div>
             <AuditResultV4
-              findings={p.findings || []}
+              findings={findings as Parameters<typeof AuditResultV4>[0]["findings"]}
               score={p.score || 0}
               scoreBreakdown={p.scoreBreakdown as Parameters<typeof AuditResultV4>[0]["scoreBreakdown"]}
-              scoreBreakdownAI={(p as Record<string, unknown>).scoreBreakdownAI as Parameters<typeof AuditResultV4>[0]["scoreBreakdownAI"]}
-              flashLoanScenarios={(p as Record<string, unknown>).flashLoanScenarios as Parameters<typeof AuditResultV4>[0]["flashLoanScenarios"]}
-              mevExposure={(p as Record<string, unknown>).mevExposure as Parameters<typeof AuditResultV4>[0]["mevExposure"]}
-              architectureRecommendations={(p as Record<string, unknown>).architectureRecommendations as string[]}
+              scoreBreakdownAI={(p as unknown as Record<string, unknown>).scoreBreakdownAI as Parameters<typeof AuditResultV4>[0]["scoreBreakdownAI"]}
+              flashLoanScenarios={(p as unknown as Record<string, unknown>).flashLoanScenarios as Parameters<typeof AuditResultV4>[0]["flashLoanScenarios"]}
+              mevExposure={(p as unknown as Record<string, unknown>).mevExposure as Parameters<typeof AuditResultV4>[0]["mevExposure"]}
+              architectureRecommendations={(p as unknown as Record<string, unknown>).architectureRecommendations as string[]}
               architectureOverview={p.architectureOverview}
               privilegedRoles={p.privilegedRoles as Parameters<typeof AuditResultV4>[0]["privilegedRoles"]}
               trustAssumptions={p.trustAssumptions as Parameters<typeof AuditResultV4>[0]["trustAssumptions"]}
               attackSurface={p.attackSurface as Parameters<typeof AuditResultV4>[0]["attackSurface"]}
-              governanceSecurity={p.governanceSecurity as Record<string, unknown>}
-              upgradeabilityAnalysis={p.upgradeabilityAnalysis as Record<string, unknown>}
+              governanceSecurity={p.governanceSecurity as unknown as Record<string, unknown>}
+              upgradeabilityAnalysis={p.upgradeabilityAnalysis as unknown as Record<string, unknown>}
               economicRisks={p.economicRisks as Parameters<typeof AuditResultV4>[0]["economicRisks"]}
               integrationRisks={p.integrationRisks as Parameters<typeof AuditResultV4>[0]["integrationRisks"]}
               invariantsChecked={p.invariantsChecked as Parameters<typeof AuditResultV4>[0]["invariantsChecked"]}
               formalVerification={p.formalVerification as Parameters<typeof AuditResultV4>[0]["formalVerification"]}
               residualRisk={p.residualRisk as Parameters<typeof AuditResultV4>[0]["residualRisk"]}
-              testingMethodology={p.testingMethodology as Record<string, unknown>}
+              testingMethodology={p.testingMethodology as unknown as Record<string, unknown>}
               aiEngagement={p.aiEngagement as Record<string, unknown>}
               aiScopeTable={p.aiScopeTable as Parameters<typeof AuditResultV4>[0]["aiScopeTable"]}
               signedReport={p.signedReport as Parameters<typeof AuditResultV4>[0]["signedReport"]}
@@ -5117,7 +5118,7 @@ console.log("Signer:", recovered);
   )
 }
 
-// ════════════════════════════════════════��══════════════════════════
+// ════════════════════════════════════════��══��═══════════════════════
 // METHODOLOGY PAGE
 // ═════════════════════════════════════════════════════════════����═════
 function MethodologyPage() {
