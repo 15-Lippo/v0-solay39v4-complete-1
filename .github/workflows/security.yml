@@ -26,6 +26,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/slither-tools"
           "$RUNNER_TEMP/slither-tools/bin/python" -m pip install --upgrade pip setuptools wheel
           "$RUNNER_TEMP/slither-tools/bin/python" -m pip install --upgrade slither-analyzer
+          export PATH="$RUNNER_TEMP/slither-tools/bin:$PATH"
           echo "$RUNNER_TEMP/slither-tools/bin" >> "$GITHUB_PATH"
           slither --version
 
