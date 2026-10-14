@@ -44,12 +44,57 @@ export async function POST(request: NextRequest) {
     if (!audit?.id || !audit?.name) {
       return NextResponse.json({ error: "Dati audit non validi" }, { status: 400 })
     }
+
+    const findings = Array.isArray(audit.findings) ? audit.findings : []
+    const counts = findings.reduce(
+      (result: Record<string, number>, finding: { severity?: string }) => {
+        const severity = String(finding.severity || "INFO").toUpperCase()
+        result[severity] = (result[severity] || 0) + 1
+        return result
+      },
+      {},
+    )
+    const openHighOrCritical = findings.some(
+      (finding: { severity?: string; status?: string }) =>
+        ["HIGH", "CRITICAL"].includes(String(finding.severity || "").toUpperCase()) &&
+        !["RESOLVED", "FIXED"].includes(String(finding.status || "").toUpperCase()),
+    )
+    const incompleteFindings = findings.filter(
+      (finding: { location?: string; proofOfConcept?: string; impact?: string; recommendation?: string }) =>
+        !finding.location || !finding.impact || !finding.recommendation || !finding.proofOfConcept,
+    ).length
+    const normalizedAudit = {
+      ...audit,
+      criticals: counts.CRITICAL ?? audit.criticals ?? 0,
+      highs: counts.HIGH ?? audit.highs ?? 0,
+      mediums: counts.MEDIUM ?? audit.mediums ?? 0,
+      lows: counts.LOW ?? audit.lows ?? 0,
+      infos: counts.INFO ?? audit.infos ?? 0,
+      publication: {
+        ...(audit.publication || {}),
+        publishedAt: new Date().toISOString(),
+        source: "solay39-public-audit-api",
+        evidenceStatus: audit.contractAddress ? "address-supplied" : "address-missing",
+        qualityGate: {
+          status: openHighOrCritical || incompleteFindings > 0 ? "REVIEW_REQUIRED" : "READY_FOR_EXTERNAL_REVIEW",
+          openHighOrCritical,
+          incompleteFindings,
+          scoreWarning: openHighOrCritical && Number(audit.score) >= 90,
+        },
+      },
+    }
     const blob = await put(
       `${BLOB_PREFIX}${audit.id}.json`,
-      JSON.stringify(audit),
+      JSON.stringify(normalizedAudit),
       { access: "public", contentType: "application/json", addRandomSuffix: false }
     )
-    return NextResponse.json({ success: true, url: blob.url, id: audit.id })
+    return NextResponse.json({
+      success: true,
+      url: blob.url,
+      id: normalizedAudit.id,
+      publicUrl: `/audit/${encodeURIComponent(normalizedAudit.id)}`,
+      audit: normalizedAudit,
+    })
   } catch (error) {
     return NextResponse.json(
       { error: "Salvataggio fallito: " + (error instanceof Error ? error.message : String(error)) },
