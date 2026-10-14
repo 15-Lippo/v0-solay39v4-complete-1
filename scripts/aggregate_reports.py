@@ -1,27 +1,51 @@
 #!/usr/bin/env python3
-import argparse, glob, json, os
+import argparse
+import glob
+import json
+from pathlib import Path
 
-def read_json(path):
+
+def load_json(path):
     try:
-        with open(path, encoding="utf-8") as f: return json.load(f)
-    except (OSError, json.JSONDecodeError): return None
+        return json.loads(Path(path).read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def slither_summary(path):
+    data = load_json(path)
+    if data is None:
+        return {"exists": False, "counts": {"high": 0, "medium": 0, "low": 0, "informational": 0}, "findings": []}
+    results = data.get("results", [])
+    if isinstance(results, dict):
+        results = results.get("detectors", results.get("issues", []))
+    counts = {"high": 0, "medium": 0, "low": 0, "informational": 0}
+    findings = []
+    for item in results if isinstance(results, list) else []:
+        impact = str(item.get("impact", item.get("severity", "informational"))).lower()
+        severity = "high" if impact in {"high", "critical"} else impact if impact in counts else "informational"
+        counts[severity] += 1
+        findings.append({"check": item.get("check"), "impact": impact, "description": item.get("description")})
+    return {"exists": True, "counts": counts, "findings": findings}
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reports-dir", required=True)
-    parser.add_argument("--out")
+    parser.add_argument("--out", required=True)
     args = parser.parse_args()
-    slither_path = os.path.join(args.reports_dir, "slither-report.json")
-    slither = read_json(slither_path) if os.path.exists(slither_path) else None
-    findings = []
-    for issue in (slither or {}).get("results", {}).get("detectors", []):
-        findings.append({"check": issue.get("check"), "impact": issue.get("impact"), "confidence": issue.get("confidence"), "description": issue.get("description"), "locations": issue.get("elements", [])})
-    counts = {}
-    for finding in findings: counts[finding.get("impact", "Informational").lower()] = counts.get(finding.get("impact", "Informational").lower(), 0) + 1
-    result = {"slither": {"present": slither is not None, "counts": counts, "findings": findings}, "mythril": [{"path": p, "present": read_json(p) is not None} for p in sorted(glob.glob(os.path.join(args.reports_dir, "mythril-*.json")))], "forge_output": os.path.exists(os.path.join(args.reports_dir, "forge_output.txt")), "echidna_output": os.path.exists(os.path.join(args.reports_dir, "echidna_output.txt"))}
-    output = json.dumps(result, indent=2)
-    if args.out:
-        with open(args.out, "w", encoding="utf-8") as f: f.write(output + "\n")
-    else: print(output)
+    root = Path(args.reports_dir)
+    summary = {"slither": slither_summary(root / "slither-report.json"), "mythril": [], "forge": None, "echidna": None}
+    for path in sorted(root.glob("mythril-*.json")):
+        data = load_json(path)
+        summary["mythril"].append({"path": str(path), "exists": data is not None, "issues": (data or {}).get("issues", [])})
+    for key, filename in (("forge", "forge_output.txt"), ("echidna", "echidna_output.txt")):
+        path = root / filename
+        if path.exists():
+            summary[key] = {"path": str(path), "head": path.read_text(errors="replace")[:4000]}
+    Path(args.out).write_text(json.dumps(summary, indent=2))
+    print(f"Wrote {args.out}")
 
-if __name__ == "__main__": main()
+
+if __name__ == "__main__":
+    main()
