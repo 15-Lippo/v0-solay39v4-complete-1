@@ -24,7 +24,7 @@ contract RegistryEdgeCasesTest is Test {
     function testUnauthorizedInvalidationReverts() public {
         bytes32 reportHash = keccak256("report");
         registry.registerAuditAuto(reportHash, keccak256("code"), address(0), 80, "cid");
-        (,, string memory auditId,,,,) = registry.verifyByHash(reportHash);
+        (,, string memory auditId,,,) = registry.verifyByHash(reportHash);
 
         vm.prank(address(0xBEEF));
         vm.expectRevert(AuditRegistry.NotAuthorized.selector);
@@ -32,7 +32,11 @@ contract RegistryEdgeCasesTest is Test {
     }
 
     function testDuplicateAuditorRegistrationReverts() public {
+        address auditor = address(0xA11CE);
+        vm.prank(auditor);
         registry.registerAuditor("Alice", "Firm");
+
+        vm.prank(auditor);
         vm.expectRevert(AuditRegistry.AlreadyRegistered.selector);
         registry.registerAuditor("Alice", "Firm");
     }
@@ -65,7 +69,7 @@ contract RegistryEdgeCasesAuthorizedTest is Test {
         registry.setAuditorVerification(address(caller), true);
         vm.prank(address(caller));
         registry.registerAuditAuto(keccak256("report"), keccak256("code"), address(0), 90, "cid");
-        (,, string memory auditId,,,,) = registry.verifyByHash(keccak256("report"));
+        (,, string memory auditId,,,) = registry.verifyByHash(keccak256("report"));
 
         caller.invalidate(auditId);
         (bool exists, bool valid,,,,,,) = registry.verifyById(auditId);
@@ -73,4 +77,3 @@ contract RegistryEdgeCasesAuthorizedTest is Test {
         assertFalse(valid);
     }
 }
-Content omitted for brevity? no, actual content needed.
